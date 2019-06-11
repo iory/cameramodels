@@ -1,8 +1,11 @@
 *~
 *.egg/
 *.pyc
-build
 \#*\#
 .\#*
-*.egg-info/
-dist/
+/*.egg-info/
+/build/
+/dist/
+/src/
+build
+/docs/source/**/reference/**/generated

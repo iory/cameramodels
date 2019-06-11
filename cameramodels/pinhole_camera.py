@@ -1,0 +1,351 @@
+import yaml
+
+import numpy as np
+
+
+class PinholeCameraModel(object):
+
+    """A Pinhole Camera Model
+
+    more detail, see http://wiki.ros.org/image_pipeline/CameraInfo
+    http://docs.ros.org/api/sensor_msgs/html/msg/CameraInfo.html
+
+    """
+
+    def __init__(self,
+                 image_height,
+                 image_width,
+                 K,
+                 P,
+                 R=np.eye(3),
+                 D=np.zeros(5)):
+        self._width = image_width
+        self._height = image_height
+        self._aspect = 1.0 * self.width / self.height
+        self.K = K
+        self.D = D
+        self.R = R
+        self.P = P
+        self.full_K = None
+        self.full_P = None
+        self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
+        self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
+        self.binning_x = None
+        self.binning_y = None
+        self.raw_roi = None
+        self.tf_frame = None
+        self.stamp = None
+
+    def calc_f_from_fov(self, fov, length):
+        return length / (2.0 * np.tan(fov * np.pi / 360.0))
+
+    @property
+    def width(self):
+        """Returns image width
+
+        Returns
+        -------
+        self._width : int
+            image width
+        """
+        return self._width
+
+    @width.setter
+    def width(self, width):
+        """Setter of image width
+
+        Parameters
+        ----------
+        width : float
+            image width of this camera
+        """
+        if width <= 0:
+            raise ValueError
+        self._width = width
+        self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
+        self._aspect = 1.0 * self.width / self.height
+
+    @property
+    def height(self):
+        """Returns image height
+
+        Returns
+        -------
+        self._height : int
+            image height
+        """
+        return self._height
+
+    @height.setter
+    def height(self, height):
+        """Setter of image height
+
+        Parameters
+        ----------
+        height : float
+            image height of this camera
+        """
+        if height <= 0:
+            raise ValueError
+        self._height = height
+        self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
+        self._aspect = 1.0 * self.width / self.height
+
+    @property
+    def aspect(self):
+        """Return aspect ratio
+
+        Returns
+        -------
+        self._aspect : float
+            ascpect ratio of this camera.
+        """
+        return self._aspect
+
+    @property
+    def cx(self):
+        """Returns x center
+
+        Returns
+        -------
+        cx : numpy.float32
+
+        """
+        return self.P[0, 2]
+
+    @property
+    def cy(self):
+        """Returns y center
+
+        Returns
+        -------
+        cy : numpy.float32
+
+        """
+        return self.P[1, 2]
+
+    @property
+    def fx(self):
+        """Returns x focal length
+
+        Returns
+        -------
+        fx : numpy.float32
+
+        """
+        return self.P[0, 0]
+
+    @property
+    def fy(self):
+        """Returns y focal length
+
+        Returns
+        -------
+        fy : numpy.float32
+
+        """
+        return self.P[1, 1]
+
+    @property
+    def fov(self):
+        return (self._fovx, self._fovy)
+
+    @property
+    def fovx(self):
+        return self._fovx
+
+    @property
+    def fovy(self):
+        return self._fovy
+
+    def get_camera_matrix(self):
+        """Return camera matrix
+
+        """
+        return self.P[:3, :3]
+
+    @property
+    def K(self):
+        """Intrinsic camera matrix for the raw (distorted) images.
+
+        .. math::
+            K = \\left(
+                \\begin{array}{ccc}
+                  f_x & 0 & c_x \\\\
+                  0 & f_y & c_y \\\\
+                  0 & 0 & 1
+                \\end{array}
+            \\right)
+
+        Projects 3D points in the camera coordinate frame to 2D pixel
+        coordinates using the focal lengths (fx, fy) and principal point
+        (cx, cy).
+        """
+        return self._K
+
+    @K.setter
+    def K(self, k):
+        self._K = np.array(k, dtype=np.float32).reshape(3, 3)
+
+    @property
+    def P(self):
+        """Projection camera_matrix
+
+        By convention, this matrix specifies the intrinsic
+        (camera) matrix of the processed (rectified) image.
+
+        .. math::
+            P = \\left(
+                \\begin{array}{cccc}
+                  {f_x}' & 0 & {c_x}' & T_x \\\\
+                  0 & {f_y}' & {c_y}' & T_y \\\\
+                  0 & 0 & 1 & 0
+                \\end{array}
+            \\right)
+
+        """
+        return self._P
+
+    @P.setter
+    def P(self, p):
+        self._P = np.array(p, dtype=np.float32).reshape(3, 4)
+        self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
+        self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
+
+    @property
+    def R(self):
+        """Rectification matrix (stereo cameras only)
+
+        A rotation matrix aligning the camera coordinate system to the ideal
+        stereo image plane so that epipolar lines in both stereo images are
+        parallel.
+        """
+        return self._R
+
+    @R.setter
+    def R(self, r):
+        self._R = np.array(r, dtype=np.float32).reshape(3, 3)
+
+    @property
+    def D(self):
+        """Property of distortion parameters
+
+        The distortion parameters, size depending on the distortion model.
+        For "plumb_bob", the 5 parameters are: (k1, k2, t1, t2, k3).
+
+        """
+        return self._D
+
+    @D.setter
+    def D(self, d):
+        self._D = np.array(d, dtype=np.float32)
+
+    @staticmethod
+    def from_yaml_file(filename):
+        with open(filename, 'r') as f:
+            data = yaml.load(f, Loader=yaml.FullLoader)
+        image_width = data['image_width']
+        image_height = data['image_height']
+        K = data['camera_matrix']['data']
+        P = data['projection_matrix']['data']
+        R = data['rectification_matrix']['data']
+        D = data['distortion_coefficients']['data']
+        return PinholeCameraModel(
+            image_height, image_width,
+            K, P, R, D)
+
+    def project_pixel_to_3d_ray(self, uv, normalize=False):
+        """Returns the ray vector
+
+        Returns the unit vector which passes from the camera center to
+        through rectified pixel (u, v),
+        using the camera :math:`P` matrix.
+        This is the inverse of :meth:`project3dToPixel`.
+
+        Parameters
+        ----------
+        uv : numpy.ndarray
+            rectified pixel coordinates
+        normalize : bool
+            if True, return normalized ray vector (unit vector).
+        """
+        x = (uv[0] - self.cx) / self.fx
+        y = (uv[1] - self.cy) / self.fy
+        z = 1.0
+        if normalize:
+            norm = np.sqrt(x*x + y*y + 1)
+            x /= norm
+            y /= norm
+            z /= norm
+        return (x, y, z)
+
+    def batch_project_pixel_to_3d_ray(self, uv):
+        """Returns the ray vectors
+
+        This function is the batch version of
+        :meth:`project_pixel_to_3d_ray`.
+        Returns the unit vector which passes from the
+        camera center to through rectified pixel (u, v),
+        using the camera :math:`P` matrix.
+        This is the inverse of :meth:`batch_project3d_to_pixel`.
+
+        Parameters
+        ----------
+        uv : numpy.ndarray
+            rectified pixel coordinates
+        """
+        x = (uv[:, 0] - self.cx) / self.fx
+        y = (uv[:, 1] - self.cy) / self.fy
+        z = np.ones(len(x))
+        return np.vstack([x, y, z]).T
+
+    def project3d_to_pixel(self, point):
+        """Returns the rectified pixel coordinates
+
+        Returns the rectified pixel coordinates (u, v) of the 3D point,
+        using the camera :math:`P` matrix.
+        This is the inverse of :meth:`projectPixelTo3dRay`.
+
+        Parameters
+        ----------
+        point : numpy.ndarray
+            3D point (x, y, z)
+        """
+        dst = np.matmul(self.P, np.array(
+            [point[0], point[1], point[2], 1.0], 'f').reshape(4, 1))
+        x = dst[0, 0]
+        y = dst[1, 0]
+        w = dst[2, 0]
+        if w != 0:
+            return (x / w, y / w)
+        else:
+            return (float('nan'), float('nan'))
+
+    def batch_project3d_to_pixel(self, points):
+        """Return project uv coordinates points
+
+        Returns the rectified pixel coordinates (u, v) of the 3D points
+        using the camera :math:`P` matrix.
+        This is the inverse of :math:`batch_project_pixel_to_3d_ray`.
+
+        Parameters
+        ----------
+        points : numpy.ndarray
+            batch of xyz point (batch_size, 3)
+
+        Returns
+        -------
+        points : tuple of uv points
+            (us, vs)
+        """
+        points = np.array(points, dtype=np.float32)
+        n = len(points)
+        points = np.concatenate(
+            [points, np.ones(n, dtype=np.float32).reshape(n, 1)], axis=1)
+        dst = np.matmul(self.P, points.T).T
+        x = dst[:, 0]
+        y = dst[:, 1]
+        w = dst[:, 2]
+        uv = np.concatenate(
+            [(x / w).reshape(-1, 1), (y / w).reshape(-1, 1)], axis=1)
+        return uv

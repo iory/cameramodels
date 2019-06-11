@@ -4,7 +4,10 @@ from setuptools import find_packages
 from setuptools import setup
 
 setup_requires = []
-install_requires = []
+install_requires = [
+    'numpy',
+    'pyyaml',
+]
 
 setup(
     name='cameramodels',
