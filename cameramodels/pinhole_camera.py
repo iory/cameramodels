@@ -1,3 +1,4 @@
+import copy
 import yaml
 
 import numpy as np
@@ -18,7 +19,9 @@ class PinholeCameraModel(object):
                  K,
                  P,
                  R=np.eye(3),
-                 D=np.zeros(5)):
+                 D=np.zeros(5),
+                 tf_frame=None,
+                 stamp=None):
         self._width = image_width
         self._height = image_height
         self._aspect = 1.0 * self.width / self.height
@@ -33,8 +36,8 @@ class PinholeCameraModel(object):
         self.binning_x = None
         self.binning_y = None
         self.raw_roi = None
-        self.tf_frame = None
-        self.stamp = None
+        self.tf_frame = tf_frame
+        self.stamp = stamp
 
     def calc_f_from_fov(self, fov, length):
         return length / (2.0 * np.tan(fov * np.pi / 360.0))
@@ -253,6 +256,56 @@ class PinholeCameraModel(object):
         return PinholeCameraModel(
             image_height, image_width,
             K, P, R, D)
+
+    @staticmethod
+    def from_camera_info(camera_info_msg):
+        """Return PinholeCameraModel from camera_info_msg
+
+        Parameters
+        ----------
+        camera_info_msg : sensor_msgs.msg.CameraInfo
+            message of camera info.
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model
+        """
+        K = np.array(camera_info_msg.K, dtype=np.float32).reshape(3, 3)
+        if camera_info_msg.D:
+            D = np.array(camera_info_msg.D, dtype=np.float32)
+        else:
+            D = np.zeros(5)
+        R = np.array(camera_info_msg.R, dtype=np.float32).reshape(3, 3)
+        P = np.array(camera_info_msg.P, dtype=np.float32).reshape(3, 4)
+        image_width = camera_info_msg.width
+        image_height = camera_info_msg.height
+        binning_x = max(1, camera_info_msg.binning_x)
+        binning_y = max(1, camera_info_msg.binning_y)
+
+        raw_roi = copy.copy(camera_info_msg.roi)
+        # ROI all zeros is considered the same as full resolution
+        if (raw_roi.x_offset == 0 and raw_roi.y_offset == 0 and
+                raw_roi.width == 0 and raw_roi.height == 0):
+            raw_roi.width = image_width
+            raw_roi.height = image_height
+        tf_frame = camera_info_msg.header.frame_id
+        stamp = camera_info_msg.header.stamp
+
+        # Adjust K and P for binning and ROI
+        K[0, 0] /= binning_x
+        K[1, 1] /= binning_y
+        K[0, 2] = (K[0, 2] - raw_roi.x_offset) / binning_x
+        K[1, 2] = (K[1, 2] - raw_roi.y_offset) / binning_y
+        P[0, 0] /= binning_x
+        P[1, 1] /= binning_y
+        P[0, 2] = (P[0, 2] - raw_roi.x_offset) / binning_x
+        P[1, 2] = (P[1, 2] - raw_roi.y_offset) / binning_y
+        return PinholeCameraModel(
+            image_height, image_width,
+            K, P, R, D,
+            tf_frame,
+            stamp)
 
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
