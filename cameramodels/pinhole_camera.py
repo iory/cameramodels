@@ -20,6 +20,7 @@ class PinholeCameraModel(object):
                  P,
                  R=np.eye(3),
                  D=np.zeros(5),
+                 roi=None,
                  tf_frame=None,
                  stamp=None):
         self._width = image_width
@@ -35,7 +36,7 @@ class PinholeCameraModel(object):
         self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
         self.binning_x = None
         self.binning_y = None
-        self.raw_roi = None
+        self.roi = roi
         self.tf_frame = tf_frame
         self.stamp = stamp
 
@@ -289,6 +290,10 @@ class PinholeCameraModel(object):
                 raw_roi.width == 0 and raw_roi.height == 0):
             raw_roi.width = image_width
             raw_roi.height = image_height
+        roi = [raw_roi.y_offset,
+               raw_roi.x_offset,
+               raw_roi.y_offset + raw_roi.height,
+               raw_roi.x_offset + raw_roi.width]
         tf_frame = camera_info_msg.header.frame_id
         stamp = camera_info_msg.header.stamp
 
@@ -304,6 +309,7 @@ class PinholeCameraModel(object):
         return PinholeCameraModel(
             image_height, image_width,
             K, P, R, D,
+            roi,
             tf_frame,
             stamp)
 
