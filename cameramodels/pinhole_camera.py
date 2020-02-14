@@ -408,3 +408,49 @@ class PinholeCameraModel(object):
         uv = np.concatenate(
             [(x / w).reshape(-1, 1), (y / w).reshape(-1, 1)], axis=1)
         return uv
+
+    def get_view_frustum(self, max_depth=1.0,
+                         translation=np.zeros(3),
+                         rotation=np.eye(3)):
+        """Return View Frustsum of this camera model.
+
+        Parameters
+        ----------
+        max_depth : float
+            max depth of frustsum.
+        translation : numpy.ndarray
+            translation vector
+        rotation : numpy.ndarray
+            rotation matrix
+
+        Returns
+        -------
+        view_frust_pts : numpy.ndarray
+            view frust points shape of (5, 3).
+
+        Examples
+        --------
+        >>> from cameramodels import Xtion
+        >>> cameramodel = Xtion()
+        >>> cameramodel.get_view_frustum(max_depth=1.0)
+        array([[ 0.        ,  0.        ,  0.        ],
+               [-0.41421356, -0.41421356,  1.        ],
+               [-0.41421356,  0.41421356,  1.        ],
+               [ 0.41421356, -0.41421356,  1.        ],
+               [ 0.41421356,  0.41421356,  1.        ]])
+        """
+        height = self.height
+        width = self.width
+        cx = self.cx
+        cy = self.cy
+        fx = self.fx
+        fy = self.fy
+        view_frust_pts = np.array(
+            [(np.array([0, 0, 0, width, width]) - cx) *
+             np.array([0, max_depth, max_depth, max_depth, max_depth]) / fx,
+             (np.array([0, 0, height, 0, height]) - cy) *
+             np.array([0, max_depth, max_depth, max_depth, max_depth]) / fy,
+             np.array([0, max_depth, max_depth, max_depth, max_depth])])
+        view_frust_pts = np.dot(rotation, view_frust_pts) + np.tile(
+            translation.reshape(3, 1), (1, view_frust_pts.shape[1]))
+        return view_frust_pts.T
