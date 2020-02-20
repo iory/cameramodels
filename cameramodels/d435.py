@@ -12,11 +12,11 @@ class D435(pinhole_camera.PinholeCameraModel):
     models = {'rgb':
               {'image_height': 1920,
                'image_width': 1080,
-               'fov': 42.5},
+               'fov': 69.4},
               'depth':
               {'image_height': 1280,
                'image_width': 720,
-               'fov': 58.0,
+               'fov': 87.0,
                'far': 10.0,
                'near': 0.11}}
 
