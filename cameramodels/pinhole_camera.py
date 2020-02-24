@@ -3,6 +3,12 @@ import yaml
 
 import numpy as np
 
+try:
+    import open3d
+    enable_open3d = True
+except ImportError:
+    enable_open3d = False
+
 
 class PinholeCameraModel(object):
 
@@ -243,6 +249,71 @@ class PinholeCameraModel(object):
     @D.setter
     def D(self, d):
         self._D = np.array(d, dtype=np.float32)
+
+    @property
+    def open3d_intrinsic(self):
+        """Return open3d.camera.PinholeCameraIntrinsic instance.
+
+        Returns
+        -------
+        intrinsic : open3d.camera.PinholeCameraIntrinsic
+            open3d PinholeCameraIntrinsic
+        """
+        if not enable_open3d:
+            raise RuntimeError(
+                "Open3d is not installed. Please install Open3d")
+        intrinsic = open3d.camera.PinholeCameraIntrinsic(
+            self.width,
+            self.height,
+            self.fx,
+            self.fy,
+            self.cx,
+            self.cy)
+        return intrinsic
+
+    @staticmethod
+    def from_open3d_intrinsic(open3d_pinhole_intrinsic):
+        """Return PinholeCameraModel from open3d's pinhole camera intrinsic.
+
+        Parameters
+        ----------
+        open3d_pinhole_intrinsic : open3d.camera.PinholeCameraIntrinsic
+            open3d PinholeCameraIntrinsic
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model
+        """
+        width = open3d_pinhole_intrinsic.width
+        height = open3d_pinhole_intrinsic.height
+        K = open3d_pinhole_intrinsic.intrinsic_matrix
+        P = np.zeros((3, 4), dtype=np.float64)
+        P[:3, :3] = K.copy()
+        return PinholeCameraModel(height, width, K, P)
+
+    @staticmethod
+    def from_intrinsic_matrix(intrinsic_matrix, height, width):
+        """Return PinholeCameraModel from intrinsic_matrix.
+
+        Parameters
+        ----------
+        intrinsic_matrix : numpy.ndarray
+            [3, 3] intrinsic matrix.
+        height : int
+            height of camera.
+        width : int
+            width of camera.
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model
+        """
+        K = np.array(intrinsic_matrix, dtype=np.float64)
+        P = np.zeros((3, 4), dtype=np.float64)
+        P[:3, :3] = K.copy()
+        return PinholeCameraModel(height, width, K, P)
 
     @staticmethod
     def from_yaml_file(filename):

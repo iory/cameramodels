@@ -212,6 +212,7 @@ epub_exclude_files = ['search.html']
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3/', None),
     'numpy': ('https://docs.scipy.org/doc/numpy/', None),
+    'open3d': ('http://www.open3d.org/docs/release', None),
 }
 
 # Autosummary fix
