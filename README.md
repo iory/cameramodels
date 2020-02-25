@@ -1,7 +1,7 @@
-# Camera Model
+# Camera Models
 
 ## Installation
 
 ```bash
-pip install cameramodel
+pip install cameramodels
 ```
