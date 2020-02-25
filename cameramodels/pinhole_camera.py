@@ -409,7 +409,8 @@ class PinholeCameraModel(object):
             z /= norm
         return (x, y, z)
 
-    def batch_project_pixel_to_3d_ray(self, uv):
+    def batch_project_pixel_to_3d_ray(self, uv,
+                                      depth=None):
         """Returns the ray vectors
 
         This function is the batch version of
@@ -418,15 +419,24 @@ class PinholeCameraModel(object):
         camera center to through rectified pixel (u, v),
         using the camera :math:`P` matrix.
         This is the inverse of :meth:`batch_project3d_to_pixel`.
+        If depth is specified, return 3d points.
 
         Parameters
         ----------
         uv : numpy.ndarray
             rectified pixel coordinates
+        depth : None or numpy.ndarray
+            depth value. If this value is specified,
+            Return 3d points.
         """
         x = (uv[:, 0] - self.cx) / self.fx
         y = (uv[:, 1] - self.cy) / self.fy
-        z = np.ones(len(x))
+        if depth is not None:
+            z = depth.reshape(-1)
+            x = x * z
+            y = y * z
+        else:
+            z = np.ones(len(x))
         return np.vstack([x, y, z]).T
 
     def project3d_to_pixel(self, point):
