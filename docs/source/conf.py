@@ -21,7 +21,7 @@ import sphinx_rtd_theme
 
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
-import _docstring_check
+import _docstring_check  # NOQA
 
 __version__ = pkg_resources.get_distribution('cameramodels').version
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
@@ -132,7 +132,7 @@ if on_rtd:
 # -- Options for HTMLHelp output ---------------------------------------------
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'skrobotdoc'
+htmlhelp_basename = 'cameramodelsdoc'
 
 
 # -- Options for LaTeX output ------------------------------------------------
@@ -159,8 +159,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'skrobot.tex', u'skrobot Documentation',
-     u'Matthew Matl', 'manual'),
+    (master_doc, 'cameramodels.tex', u'cameramodels Documentation',
+     author, 'manual'),
 ]
 
 
@@ -169,7 +169,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'skrobot', u'scikit-robot Documentation',
+    (master_doc, 'cameramodels', u'cameramodels Documentation',
      [author], 1)
     ]
 
@@ -180,8 +180,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'scikit-robot', u'scikit-robot Documentation',
-     author, 'scikit-robot', 'One line description of project.',
+    (master_doc, 'cameramodels', u'cameramodels Documentation',
+     author, 'cameramodels', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -302,7 +302,7 @@ def _get_sourcefile_and_linenumber(obj):
 def linkcode_resolve(domain, info):
     if domain != 'py' or not info['module']:
         return None
-    if 1 == int(os.environ.get('SKROBOT_DOCS_SKIP_LINKCODE', 0)):
+    if 1 == int(os.environ.get('CAMERAMODELS_DOCS_SKIP_LINKCODE', 0)):
         return None
 
     # Import the object from module path
@@ -312,7 +312,8 @@ def linkcode_resolve(domain, info):
     mod = inspect.getmodule(obj)
     if mod is None:
         return None
-    if not (mod.__name__ == 'skrobot' or mod.__name__.startswith('skrobot.')):
+    if not (mod.__name__ == 'cameramodels' or
+            mod.__name__.startswith('cameramodels.')):
         return None
 
     # Retrieve source file name and line number
@@ -323,5 +324,5 @@ def linkcode_resolve(domain, info):
     filename = os.path.realpath(filename)
     relpath = _get_source_relative_path(filename)
 
-    return 'https://github.com/iory/scikit-robot/blob/{}/{}#L{}'.format(
+    return 'https://github.com/iory/cameramodels/blob/{}/{}#L{}'.format(
         tag, relpath, linenum)
