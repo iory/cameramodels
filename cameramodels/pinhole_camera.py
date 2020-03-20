@@ -10,6 +10,13 @@ except ImportError:
     enable_open3d = False
 
 
+def format_mat(x, precision):
+    return ("[%s]" % (
+        np.array2string(x, precision=precision,
+                        suppress_small=True, separator=", ")
+            .replace("[", "").replace("]", "").replace("\n", "\n        ")))
+
+
 class PinholeCameraModel(object):
 
     """A Pinhole Camera Model
@@ -28,7 +35,9 @@ class PinholeCameraModel(object):
                  D=np.zeros(5),
                  roi=None,
                  tf_frame=None,
-                 stamp=None):
+                 stamp=None,
+                 distortion_model='plumb_bob',
+                 name=''):
         self._width = image_width
         self._height = image_height
         self._aspect = 1.0 * self.width / self.height
@@ -36,6 +45,8 @@ class PinholeCameraModel(object):
         self.D = D
         self.R = R
         self.P = P
+        self.distortion_model = distortion_model
+        self.name = name
         self.full_K = None
         self.full_P = None
         self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
@@ -293,7 +304,8 @@ class PinholeCameraModel(object):
         return PinholeCameraModel(height, width, K, P)
 
     @staticmethod
-    def from_intrinsic_matrix(intrinsic_matrix, height, width):
+    def from_intrinsic_matrix(intrinsic_matrix, height, width,
+                              **kwargs):
         """Return PinholeCameraModel from intrinsic_matrix.
 
         Parameters
@@ -304,6 +316,9 @@ class PinholeCameraModel(object):
             height of camera.
         width : int
             width of camera.
+        kwargs : dict
+            keyword args. These values are passed to
+            cameramodels.PinholeCameraModel
 
         Returns
         -------
@@ -313,7 +328,8 @@ class PinholeCameraModel(object):
         K = np.array(intrinsic_matrix, dtype=np.float64)
         P = np.zeros((3, 4), dtype=np.float64)
         P[:3, :3] = K.copy()
-        return PinholeCameraModel(height, width, K, P)
+        return PinholeCameraModel(height, width, K, P,
+                                  **kwargs)
 
     @staticmethod
     def from_yaml_file(filename):
@@ -325,9 +341,15 @@ class PinholeCameraModel(object):
         P = data['projection_matrix']['data']
         R = data['rectification_matrix']['data']
         D = data['distortion_coefficients']['data']
+        if 'camera_name' in data:
+            name = data['camera_name']
+        else:
+            name = ''
         return PinholeCameraModel(
             image_height, image_width,
-            K, P, R, D)
+            K, P, R, D,
+            distortion_model=data['distortion_model'],
+            name=name)
 
     @staticmethod
     def from_camera_info(camera_info_msg):
@@ -382,7 +404,8 @@ class PinholeCameraModel(object):
             K, P, R, D,
             roi,
             tf_frame,
-            stamp)
+            stamp,
+            distortion_model=camera_info_msg.distortion_model)
 
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
@@ -543,3 +566,42 @@ class PinholeCameraModel(object):
         view_frust_pts = np.dot(rotation, view_frust_pts) + np.tile(
             translation.reshape(3, 1), (1, view_frust_pts.shape[1]))
         return view_frust_pts.T
+
+    def dump(self, output_filepath):
+        """Dump this camera's parameter to yaml file.
+
+        Parameters
+        ----------
+        output_filepath : str or pathlib.Path
+            output path
+        """
+        camera_data = "\n".join([
+                "image_width: %d" % self.width,
+                "image_height: %d" % self.height,
+                "camera_name: " + self.name,
+                "camera_matrix:",
+                "  rows: 3",
+                "  cols: 3",
+                "  data: " + format_mat(
+                    np.array(self.K.reshape(-1), dtype=np.float64), 5),
+                "distortion_model: " + self.distortion_model,
+                "distortion_coefficients:",
+                "  rows: 1",
+                "  cols: %d" % len(self.D),
+                "  data: [%s]" % ", ".join(
+                    "%8f" % x
+                    for x in self.D),
+                "rectification_matrix:",
+                "  rows: 3",
+                "  cols: 3",
+                "  data: " + format_mat(
+                    np.array(self.R.reshape(-1), dtype=np.float64), 8),
+                "projection_matrix:",
+                "  rows: 3",
+                "  cols: 4",
+                "  data: " + format_mat(
+                    np.array(self.P.reshape(-1), dtype=np.float64), 5),
+                ""
+            ])
+        with open(str(output_filepath), 'w') as f:
+            f.write(camera_data)
