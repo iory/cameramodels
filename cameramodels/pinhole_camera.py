@@ -29,7 +29,8 @@ class PinholeCameraModel(object):
                  roi=None,
                  tf_frame=None,
                  stamp=None,
-                 distortion_model='plumb_bob'):
+                 distortion_model='plumb_bob',
+                 name=''):
         self._width = image_width
         self._height = image_height
         self._aspect = 1.0 * self.width / self.height
@@ -38,6 +39,7 @@ class PinholeCameraModel(object):
         self.R = R
         self.P = P
         self.distortion_model = distortion_model
+        self.name = name
         self.full_K = None
         self.full_P = None
         self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
@@ -295,7 +297,8 @@ class PinholeCameraModel(object):
         return PinholeCameraModel(height, width, K, P)
 
     @staticmethod
-    def from_intrinsic_matrix(intrinsic_matrix, height, width):
+    def from_intrinsic_matrix(intrinsic_matrix, height, width,
+                              **kwargs):
         """Return PinholeCameraModel from intrinsic_matrix.
 
         Parameters
@@ -306,6 +309,9 @@ class PinholeCameraModel(object):
             height of camera.
         width : int
             width of camera.
+        kwargs : dict
+            keyword args. These values are passed to
+            cameramodels.PinholeCameraModel
 
         Returns
         -------
@@ -315,7 +321,8 @@ class PinholeCameraModel(object):
         K = np.array(intrinsic_matrix, dtype=np.float64)
         P = np.zeros((3, 4), dtype=np.float64)
         P[:3, :3] = K.copy()
-        return PinholeCameraModel(height, width, K, P)
+        return PinholeCameraModel(height, width, K, P,
+                                  **kwargs)
 
     @staticmethod
     def from_yaml_file(filename):
@@ -327,10 +334,15 @@ class PinholeCameraModel(object):
         P = data['projection_matrix']['data']
         R = data['rectification_matrix']['data']
         D = data['distortion_coefficients']['data']
+        if 'camera_name' in data:
+            name = data['camera_name']
+        else:
+            name = ''
         return PinholeCameraModel(
             image_height, image_width,
             K, P, R, D,
-            distortion_model=data['distortion_model'])
+            distortion_model=data['distortion_model'],
+            name=name)
 
     @staticmethod
     def from_camera_info(camera_info_msg):
