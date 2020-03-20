@@ -28,7 +28,8 @@ class PinholeCameraModel(object):
                  D=np.zeros(5),
                  roi=None,
                  tf_frame=None,
-                 stamp=None):
+                 stamp=None,
+                 distortion_model='plumb_bob'):
         self._width = image_width
         self._height = image_height
         self._aspect = 1.0 * self.width / self.height
@@ -36,6 +37,7 @@ class PinholeCameraModel(object):
         self.D = D
         self.R = R
         self.P = P
+        self.distortion_model = distortion_model
         self.full_K = None
         self.full_P = None
         self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
@@ -327,7 +329,8 @@ class PinholeCameraModel(object):
         D = data['distortion_coefficients']['data']
         return PinholeCameraModel(
             image_height, image_width,
-            K, P, R, D)
+            K, P, R, D,
+            distortion_model=data['distortion_model'])
 
     @staticmethod
     def from_camera_info(camera_info_msg):
@@ -382,7 +385,8 @@ class PinholeCameraModel(object):
             K, P, R, D,
             roi,
             tf_frame,
-            stamp)
+            stamp,
+            distortion_model=camera_info_msg.distortion_model)
 
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
