@@ -10,6 +10,13 @@ except ImportError:
     enable_open3d = False
 
 
+def format_mat(x, precision):
+    return ("[%s]" % (
+        np.array2string(x, precision=precision,
+                        suppress_small=True, separator=", ")
+            .replace("[", "").replace("]", "").replace("\n", "\n        ")))
+
+
 class PinholeCameraModel(object):
 
     """A Pinhole Camera Model
@@ -559,3 +566,42 @@ class PinholeCameraModel(object):
         view_frust_pts = np.dot(rotation, view_frust_pts) + np.tile(
             translation.reshape(3, 1), (1, view_frust_pts.shape[1]))
         return view_frust_pts.T
+
+    def dump(self, output_filepath):
+        """Dump this camera's parameter to yaml file.
+
+        Parameters
+        ----------
+        output_filepath : str or pathlib.Path
+            output path
+        """
+        camera_data = "\n".join([
+                "image_width: %d" % self.width,
+                "image_height: %d" % self.height,
+                "camera_name: " + self.name,
+                "camera_matrix:",
+                "  rows: 3",
+                "  cols: 3",
+                "  data: " + format_mat(
+                    np.array(self.K.reshape(-1), dtype=np.float64), 5),
+                "distortion_model: " + self.distortion_model,
+                "distortion_coefficients:",
+                "  rows: 1",
+                "  cols: %d" % len(self.D),
+                "  data: [%s]" % ", ".join(
+                    "%8f" % x
+                    for x in self.D),
+                "rectification_matrix:",
+                "  rows: 3",
+                "  cols: 3",
+                "  data: " + format_mat(
+                    np.array(self.R.reshape(-1), dtype=np.float64), 8),
+                "projection_matrix:",
+                "  rows: 3",
+                "  cols: 4",
+                "  data: " + format_mat(
+                    np.array(self.P.reshape(-1), dtype=np.float64), 5),
+                ""
+            ])
+        with open(str(output_filepath), 'w') as f:
+            f.write(camera_data)
