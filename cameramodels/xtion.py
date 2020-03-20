@@ -30,4 +30,5 @@ class Xtion(pinhole_camera.PinholeCameraModel):
             image_height=height,
             image_width=width,
             K=K,
-            P=P)
+            P=P,
+            name='xtion')

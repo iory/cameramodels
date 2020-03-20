@@ -10,13 +10,15 @@ class KinectV2(pinhole_camera.PinholeCameraModel):
     """
 
     models = {'rgb':
-              {'image_height': 1920,
-               'image_width': 1080,
-               'fov': 84.1},
+              {'image_height': 1080,
+               'image_width': 1920,
+               'fovx': 84.1,
+               'fovy': 53.8},
               'depth':
-              {'image_height': 512,
-               'image_width': 424,
-               'fov': 70,
+              {'image_height': 424,
+               'image_width': 512,
+               'fovx': 70.6,
+               'fovy': 60,
                'far': 4.5,
                'near': 0.5}}
 
@@ -25,10 +27,9 @@ class KinectV2(pinhole_camera.PinholeCameraModel):
             raise ValueError
         height = self.models[mode]['image_height']
         width = self.models[mode]['image_width']
-        fovy = self.models[mode]['fov']
-        aspect = width / height
+        fovy = self.models[mode]['fovy']
+        fovx = self.models[mode]['fovx']
 
-        fovx = aspect * fovy
         fx = self.calc_f_from_fov(fovx, width)
         fy = self.calc_f_from_fov(fovy, height)
         K = [fx, 0, width / 2.0,
@@ -41,4 +42,5 @@ class KinectV2(pinhole_camera.PinholeCameraModel):
             image_height=height,
             image_width=width,
             K=K,
-            P=P)
+            P=P,
+            name='kinect_v2')

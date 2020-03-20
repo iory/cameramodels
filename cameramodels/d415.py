@@ -12,13 +12,15 @@ class D415(pinhole_camera.PinholeCameraModel):
     """
 
     models = {'rgb':
-              {'image_height': 1920,
-               'image_width': 1080,
-               'fov': 69.4},
+              {'image_height': 1080,
+               'image_width': 1920,
+               'fovx': 69.4,
+               'fovy': 42.5},
               'depth':
-              {'image_height': 1280,
-               'image_width': 720,
-               'fov': 69.4,
+              {'image_height': 720,
+               'image_width': 1280,
+               'fovx': 69.4,
+               'fovy': 42.5,
                'far': 10.0,
                'near': 0.16}}
 
@@ -27,10 +29,9 @@ class D415(pinhole_camera.PinholeCameraModel):
             raise ValueError
         height = self.models[mode]['image_height']
         width = self.models[mode]['image_width']
-        fovy = self.models[mode]['fov']
-        aspect = width / height
+        fovy = self.models[mode]['fovy']
+        fovx = self.models[mode]['fovx']
 
-        fovx = aspect * fovy
         fx = self.calc_f_from_fov(fovx, width)
         fy = self.calc_f_from_fov(fovy, height)
         K = [fx, 0, width / 2.0,
@@ -43,4 +44,5 @@ class D415(pinhole_camera.PinholeCameraModel):
             image_height=height,
             image_width=width,
             K=K,
-            P=P)
+            P=P,
+            name='d415')
