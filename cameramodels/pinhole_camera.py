@@ -283,6 +283,40 @@ class PinholeCameraModel(object):
         return intrinsic
 
     @staticmethod
+    def from_fov(fov, height, width, **kwargs):
+        """Return PinholeCameraModel from fov.
+
+        Parameters
+        ----------
+        fov : float
+            field of view in degree.
+        height : int
+            height of camera.
+        width : int
+            width of camera.
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model
+        """
+        aspect = 1.0 * width / height
+        fy = height / (2.0 * np.tan(fov * np.pi / 360.0))
+        fx = width / (2.0 * np.tan(fov * aspect * np.pi / 360.0))
+        K = [fx, 0, width / 2.0,
+             0, fy, height / 2.0,
+             0, 0, 1]
+        P = [fx, 0, width / 2.0, 0,
+             0, fy, height / 2.0, 0,
+             0, 0, 1, 0]
+        return PinholeCameraModel(
+            image_height=height,
+            image_width=width,
+            K=K,
+            P=P,
+            **kwargs)
+
+    @staticmethod
     def from_open3d_intrinsic(open3d_pinhole_intrinsic):
         """Return PinholeCameraModel from open3d's pinhole camera intrinsic.
 
