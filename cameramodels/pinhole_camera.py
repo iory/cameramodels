@@ -283,6 +283,29 @@ class PinholeCameraModel(object):
         return intrinsic
 
     @staticmethod
+    def calc_fovx(fovy, height, width):
+        """Return fovx from fovy, height and width.
+
+        Parameters
+        ----------
+        fovy : float
+            field of view in degree.
+        height : int
+            height of camera.
+        width : int
+            width of camera.
+
+        Returns
+        -------
+        fovy : float
+            calculated fovx.
+        """
+        aspect = 1.0 * width / height
+        fovx = np.rad2deg(2 * np.arctan(
+            np.tan(0.5 * np.deg2rad(fovy)) * aspect))
+        return fovx
+
+    @staticmethod
     def from_fov(fov, height, width, **kwargs):
         """Return PinholeCameraModel from fov.
 
