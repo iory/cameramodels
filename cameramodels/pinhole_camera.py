@@ -57,9 +57,6 @@ class PinholeCameraModel(object):
         self.tf_frame = tf_frame
         self.stamp = stamp
 
-    def calc_f_from_fov(self, fov, length):
-        return length / (2.0 * np.tan(fov * np.pi / 360.0))
-
     @property
     def width(self):
         """Returns image width
@@ -306,13 +303,31 @@ class PinholeCameraModel(object):
         return fovx
 
     @staticmethod
-    def from_fov(fov, height, width, **kwargs):
-        """Return PinholeCameraModel from fov.
+    def calc_f_from_fov(fov, aperture):
+        """Return focal length.
 
         Parameters
         ----------
         fov : float
             field of view in degree.
+        aperture : float
+            aperture.
+
+        Returns
+        -------
+        focal_length : float
+            calculated focal length.
+        """
+        return aperture / (2.0 * np.tan(np.deg2rad(fov / 2.0)))
+
+    @staticmethod
+    def from_fov(fovy, height, width, **kwargs):
+        """Return PinholeCameraModel from fov.
+
+        Parameters
+        ----------
+        fovy : float
+            horizontal field of view in degree.
         height : int
             height of camera.
         width : int
@@ -323,9 +338,9 @@ class PinholeCameraModel(object):
         cameramodel : cameramodels.PinholeCameraModel
             camera model
         """
-        aspect = 1.0 * width / height
-        fy = height / (2.0 * np.tan(fov * np.pi / 360.0))
-        fx = width / (2.0 * np.tan(fov * aspect * np.pi / 360.0))
+        fovx = PinholeCameraModel.calc_fovx(fovy, height, width)
+        fy = PinholeCameraModel.calc_f_from_fov(fovy, height)
+        fx = PinholeCameraModel.calc_f_from_fov(fovx, width)
         K = [fx, 0, width / 2.0,
              0, fy, height / 2.0,
              0, 0, 1]
