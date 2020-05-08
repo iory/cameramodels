@@ -23,3 +23,9 @@ class TestPinholeCameraModel(unittest.TestCase):
 
     def test_from_fov(self):
         PinholeCameraModel.from_fov(45, 480, 640)
+
+    def test_from_fovx(self):
+        PinholeCameraModel.from_fovx(45, 480, 640)
+
+    def test_from_fovy(self):
+        PinholeCameraModel.from_fovy(45, 480, 640)

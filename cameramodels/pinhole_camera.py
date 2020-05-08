@@ -294,13 +294,37 @@ class PinholeCameraModel(object):
 
         Returns
         -------
-        fovy : float
+        fovx : float
             calculated fovx.
         """
         aspect = 1.0 * width / height
         fovx = np.rad2deg(2 * np.arctan(
             np.tan(0.5 * np.deg2rad(fovy)) * aspect))
         return fovx
+
+    @staticmethod
+    def calc_fovy(fovx, height, width):
+        """Return fovy from fovx, height and width.
+
+        Parameters
+        ----------
+        fovx : float
+            horizontal field of view in degree.
+        height : int
+            height of camera.
+        width : int
+            width of camera.
+
+        Returns
+        -------
+        fovy : float
+            calculated fovy.
+        """
+        aspect = 1.0 * width / height
+        fovy = np.rad2deg(
+            2 * np.arctan(
+                np.tan(0.5 * np.deg2rad(fovx)) / aspect))
+        return fovy
 
     @staticmethod
     def calc_f_from_fov(fov, aperture):
@@ -322,12 +346,66 @@ class PinholeCameraModel(object):
 
     @staticmethod
     def from_fov(fovy, height, width, **kwargs):
-        """Return PinholeCameraModel from fov.
+        """Return PinholeCameraModel from fovy.
 
         Parameters
         ----------
         fovy : float
+            vertical field of view in degree.
+        height : int
+            height of camera.
+        width : int
+            width of camera.
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model
+        """
+        return PinholeCameraModel.from_fovy(fovy, height, width, **kwargs)
+
+    @staticmethod
+    def from_fovx(fovx, height, width, **kwargs):
+        """Return PinholeCameraModel from fovx.
+
+        Parameters
+        ----------
+        fovx : float
             horizontal field of view in degree.
+        height : int
+            height of camera.
+        width : int
+            width of camera.
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model
+        """
+        fovy = PinholeCameraModel.calc_fovy(fovx, height, width)
+        fy = PinholeCameraModel.calc_f_from_fov(fovy, height)
+        fx = PinholeCameraModel.calc_f_from_fov(fovx, width)
+        K = [fx, 0, width / 2.0,
+             0, fy, height / 2.0,
+             0, 0, 1]
+        P = [fx, 0, width / 2.0, 0,
+             0, fy, height / 2.0, 0,
+             0, 0, 1, 0]
+        return PinholeCameraModel(
+            image_height=height,
+            image_width=width,
+            K=K,
+            P=P,
+            **kwargs)
+
+    @staticmethod
+    def from_fovy(fovy, height, width, **kwargs):
+        """Return PinholeCameraModel from fovy.
+
+        Parameters
+        ----------
+        fovy : float
+            vertical field of view in degree.
         height : int
             height of camera.
         width : int
