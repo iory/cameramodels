@@ -15,9 +15,7 @@ class Xtion(pinhole_camera.PinholeCameraModel):
         height = 480
         width = 640
         fovy = 45.0
-        aspect = width / height
-
-        fovx = aspect * fovy
+        fovx = pinhole_camera.PinholeCameraModel.calc_fovx(fovy, height, width)
         fx = self.calc_f_from_fov(fovx, width)
         fy = self.calc_f_from_fov(fovy, height)
         K = [fx, 0, width / 2.0,
