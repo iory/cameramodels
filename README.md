@@ -14,3 +14,9 @@ Manipulate Camera Library.
 ```bash
 pip install cameramodels
 ```
+
+If you would like to `open3d` conversion functions,
+
+```bash
+pip install cameramodels[all]
+```

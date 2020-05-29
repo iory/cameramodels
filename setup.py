@@ -35,7 +35,6 @@ if sys.argv[-1] == 'release':
 setup_requires = []
 install_requires = [
     'numpy',
-    'open3d',
     'pyyaml',
 ]
 
@@ -65,4 +64,7 @@ setup(
     zip_safe=False,
     setup_requires=setup_requires,
     install_requires=install_requires,
+    extras_require={
+        'all': ['open3d'],
+    },
 )
