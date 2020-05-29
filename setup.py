@@ -9,7 +9,7 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-version = '0.1.1'
+version = '0.1.2'
 
 
 if sys.argv[-1] == 'release':
@@ -35,7 +35,6 @@ if sys.argv[-1] == 'release':
 setup_requires = []
 install_requires = [
     'numpy',
-    'open3d',
     'pyyaml',
 ]
 
@@ -65,4 +64,7 @@ setup(
     zip_safe=False,
     setup_requires=setup_requires,
     install_requires=install_requires,
+    extras_require={
+        'all': ['open3d'],
+    },
 )

@@ -3,12 +3,6 @@ import yaml
 
 import numpy as np
 
-try:
-    import open3d
-    enable_open3d = True
-except ImportError:
-    enable_open3d = False
-
 
 def format_mat(x, precision):
     return ("[%s]" % (
@@ -267,7 +261,9 @@ class PinholeCameraModel(object):
         intrinsic : open3d.camera.PinholeCameraIntrinsic
             open3d PinholeCameraIntrinsic
         """
-        if not enable_open3d:
+        try:
+            import open3d
+        except ImportError:
             raise RuntimeError(
                 "Open3d is not installed. Please install Open3d")
         intrinsic = open3d.camera.PinholeCameraIntrinsic(
