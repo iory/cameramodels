@@ -631,7 +631,8 @@ class PinholeCameraModel(object):
             return (float('nan'), float('nan'))
 
     def batch_project3d_to_pixel(self, points,
-                                 project_valid_depth_only=False):
+                                 project_valid_depth_only=False,
+                                 return_indices=False):
         """Return project uv coordinates points
 
         Returns the rectified pixel coordinates (u, v) of the 3D points
@@ -644,6 +645,9 @@ class PinholeCameraModel(object):
             batch of xyz point (batch_size, 3)
         project_valid_depth_only : bool
             If True, return uvs which are in frame.
+        return_indices : bool
+            If this value and project_valid_depth_only are True,
+            return valid indices.
 
         Returns
         -------
@@ -661,10 +665,12 @@ class PinholeCameraModel(object):
         uv = np.concatenate(
             [(x / w).reshape(-1, 1), (y / w).reshape(-1, 1)], axis=1)
         if project_valid_depth_only is True:
-            uv = uv[
-                np.logical_and(
-                    np.logical_and(0 <= uv[:, 0], uv[:, 0] < self.width),
-                    np.logical_and(0 <= uv[:, 1], uv[:, 1] < self.height))]
+            valid_indices = np.logical_and(
+                np.logical_and(0 <= uv[:, 0], uv[:, 0] < self.width),
+                np.logical_and(0 <= uv[:, 1], uv[:, 1] < self.height))
+            uv = uv[valid_indices]
+            if return_indices is True:
+                return uv, np.where(valid_indices)[0]
         return uv
 
     def get_view_frustum(self, max_depth=1.0,

@@ -1,5 +1,6 @@
 import unittest
 
+import numpy as np
 from numpy import testing
 
 from cameramodels import PinholeCameraModel
@@ -29,3 +30,16 @@ class TestPinholeCameraModel(unittest.TestCase):
 
     def test_from_fovy(self):
         PinholeCameraModel.from_fovy(45, 480, 640)
+
+    def test_batch_project3d_to_pixel(self):
+        cm = PinholeCameraModel.from_fovy(45, 480, 640)
+        cm.batch_project3d_to_pixel(
+            np.array([[10, 0, 1],
+                      [0, 0, 1]]))
+
+        _, valid_indices = cm.batch_project3d_to_pixel(
+            np.array([[10, 0, 1],
+                      [0, 0, 1]]),
+            project_valid_depth_only=True,
+            return_indices=True)
+        testing.assert_equal(valid_indices, np.array([1]))
