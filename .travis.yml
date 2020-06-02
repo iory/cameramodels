@@ -9,14 +9,15 @@ python:
 
 addons:
   apt:
+    sources:
+      - ubuntu-toolchain-r-test # if we don't specify this, the libstdc++6 we get is the wrong version
     update: true
     packages:
-      - freeglut3-dev
+      - libstdc++6
 
 install:
   - pip install --upgrade pip setuptools wheel
-  - pip install Cython
-  - pip install .
+  - pip install .[all]
 
 script:
   - pip install hacking pytest
