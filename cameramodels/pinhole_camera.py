@@ -18,6 +18,30 @@ class PinholeCameraModel(object):
     more detail, see http://wiki.ros.org/image_pipeline/CameraInfo
     http://docs.ros.org/api/sensor_msgs/html/msg/CameraInfo.html
 
+    Parameters
+    ----------
+    image_height : int
+        height of camera image.
+    image_width : int
+        width of camera image.
+    K : numpy.ndarray
+        3x3 intrinsic matrix.
+    P : numpy.ndarray
+        3x4 projection matrix
+    R : numpy.ndarray
+        3x3 rectification matrix.
+    D : numpy.ndarray
+        distortion.
+    roi : None or list[float]
+        [left_y, left_x, right_y, right_x] order.
+    tf_frame : None or str
+        tf frame. This is for ROS compatibility.
+    stamp : None
+        timestamp. This is for ROS compatibility.
+    distortion_model : str
+        type of distortion model.
+    name : None or str
+        name of this camera.
     """
 
     def __init__(self,
@@ -160,19 +184,44 @@ class PinholeCameraModel(object):
 
     @property
     def fov(self):
+        """Property of fov.
+
+        Returns
+        -------
+        fov : tuple(float)
+            tuple of (fovx, fovy).
+        """
         return (self._fovx, self._fovy)
 
     @property
     def fovx(self):
+        """Property of horizontal fov.
+
+        Returns
+        -------
+        self._fovx : float
+            horizontal fov of this camera.
+        """
         return self._fovx
 
     @property
     def fovy(self):
+        """Property of vertical fov.
+
+        Returns
+        -------
+        self._fovy : float
+            vertical fov of this camera.
+        """
         return self._fovy
 
     def get_camera_matrix(self):
         """Return camera matrix
 
+        Returns
+        -------
+        camera_matrix : numpy.ndarray
+            camera matrix from Projection matrix.
         """
         return self.P[:3, :3]
 
@@ -192,6 +241,11 @@ class PinholeCameraModel(object):
         Projects 3D points in the camera coordinate frame to 2D pixel
         coordinates using the focal lengths (fx, fy) and principal point
         (cx, cy).
+
+        Returns
+        -------
+        self._K : numpy.ndarray
+            3x3 intrinsic matrix.
         """
         return self._K
 
@@ -215,6 +269,10 @@ class PinholeCameraModel(object):
                 \\end{array}
             \\right)
 
+        Returns
+        -------
+        self._P : numpy.ndarray
+            4x3 projection matrix.
         """
         return self._P
 
@@ -231,6 +289,11 @@ class PinholeCameraModel(object):
         A rotation matrix aligning the camera coordinate system to the ideal
         stereo image plane so that epipolar lines in both stereo images are
         parallel.
+
+        Returns
+        -------
+        self._R : numpy.ndarray
+            rectification matrix.
         """
         return self._R
 
@@ -245,6 +308,10 @@ class PinholeCameraModel(object):
         The distortion parameters, size depending on the distortion model.
         For "plumb_bob", the 5 parameters are: (k1, k2, t1, t2, k3).
 
+        Returns
+        -------
+        self._D : numpy.ndarray
+            distortion array.
         """
         return self._D
 
@@ -479,6 +546,18 @@ class PinholeCameraModel(object):
 
     @staticmethod
     def from_yaml_file(filename):
+        """Create instance of PinholeCameraModel from yaml file.
+
+        Parameters
+        ----------
+        filename : str
+            path of yaml file.
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model
+        """
         with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.FullLoader)
         image_width = data['image_width']
@@ -559,7 +638,7 @@ class PinholeCameraModel(object):
         Returns the unit vector which passes from the camera center to
         through rectified pixel (u, v),
         using the camera :math:`P` matrix.
-        This is the inverse of :meth:`project3dToPixel`.
+        This is the inverse of :meth:`project3d_to_pixel`.
 
         Parameters
         ----------
@@ -567,6 +646,11 @@ class PinholeCameraModel(object):
             rectified pixel coordinates
         normalize : bool
             if True, return normalized ray vector (unit vector).
+
+        Returns
+        -------
+        ray_vector : tuple(float)
+            ray vector.
         """
         x = (uv[0] - self.cx) / self.fx
         y = (uv[1] - self.cy) / self.fy
@@ -597,6 +681,12 @@ class PinholeCameraModel(object):
         depth : None or numpy.ndarray
             depth value. If this value is specified,
             Return 3d points.
+
+        Returns
+        -------
+        ret : numpy.ndarray
+            calculated ray vectors or points(depth is given case).
+            Shape of (batch_size, 3)
         """
         x = (uv[:, 0] - self.cx) / self.fx
         y = (uv[:, 1] - self.cy) / self.fy
@@ -613,12 +703,18 @@ class PinholeCameraModel(object):
 
         Returns the rectified pixel coordinates (u, v) of the 3D point,
         using the camera :math:`P` matrix.
-        This is the inverse of :meth:`projectPixelTo3dRay`.
+        This is the inverse of :meth `project_pixel_to_3d_ray`.
 
         Parameters
         ----------
         point : numpy.ndarray
             3D point (x, y, z)
+
+        Returns
+        -------
+        uv : tuple(float)
+            uv coordinates. If point is not in range of this camera model,
+            return tuple(float('nan'), float('nan')).
         """
         dst = np.matmul(self.P, np.array(
             [point[0], point[1], point[2], 1.0], 'f').reshape(4, 1))
@@ -637,7 +733,7 @@ class PinholeCameraModel(object):
 
         Returns the rectified pixel coordinates (u, v) of the 3D points
         using the camera :math:`P` matrix.
-        This is the inverse of :math:`batch_project_pixel_to_3d_ray`.
+        This is the inverse of :meth:`batch_project_pixel_to_3d_ray`.
 
         Parameters
         ----------
@@ -651,8 +747,8 @@ class PinholeCameraModel(object):
 
         Returns
         -------
-        points : tuple of uv points
-            (us, vs)
+        points : numpy.ndarray
+            shape of (batch_size, 2).
         """
         points = np.array(points, dtype=np.float32)
         n = len(points)
