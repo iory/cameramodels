@@ -815,6 +815,65 @@ class PinholeCameraModel(object):
             translation.reshape(3, 1), (1, view_frust_pts.shape[1]))
         return view_frust_pts.T
 
+    def flatten_uv(self, uv, dtype=np.int64):
+        """Flattens uv coordinates to single dimensional tensor.
+
+        This is the inverse of :meth:`flattened_pixel_locations_to_uv`.
+
+        Parameters
+        ----------
+        uv : numpy.ndarray or list[tuple(float, float)]
+            A pair of uv pixels. Shape of (batch_size, 2).
+            [(u_1, v_1), (u_2, v_2) ..., (u_n, v_n)].
+        dtype : type
+            data type. default is numpy.int64.
+
+        Returns
+        -------
+        ret : numpy.ndarray
+            Flattened uv tensor of shape (n, ).
+
+        Examples
+        --------
+        >>> from cameramodels import PinholeCameraModel
+        >>> cm = PinholeCameraModel.from_fovy(45, 480, 640)
+        >>> cm.flatten_uv(np.array([(1, 0), (100, 1), (100, 2)]))
+        array([   1,  740, 1380])
+        """
+        uv = np.array(uv)
+        return np.array(uv[:, 1], dtype=dtype) * self.width \
+            + np.array(uv[:, 0], dtype=dtype)
+
+    def flattened_pixel_locations_to_uv(self, flat_pixel_locations):
+        """Flattens pixel locations(single dimension tensor) to uv coordinates.
+
+        This is the inverse of :meth:`flatten_uv`.
+
+        Parameters
+        ----------
+        flat_pixel_locations : numpy.ndarray or list[float]
+            Flattened pixel locations.
+
+        Returns
+        -------
+        ret : numpy.ndarray
+            UV coordinates.
+
+        Examples
+        --------
+        >>> from cameramodels import PinholeCameraModel
+        >>> cm = PinholeCameraModel.from_fovy(45, 480, 640)
+        >>> flatten_uv = [1, 740, 1380]
+        >>> cm.flattened_pixel_locations_to_uv(flatten_uv)
+        array([[  1,   0],
+               [100,   1],
+               [100,   2]])
+        """
+        flat_pixel_locations = np.array(flat_pixel_locations, dtype=np.int64)
+        return np.hstack([
+            (flat_pixel_locations % self.width).reshape(-1, 1),
+            (flat_pixel_locations.T // self.width).reshape(-1, 1)])
+
     def dump(self, output_filepath):
         """Dump this camera's parameter to yaml file.
 
