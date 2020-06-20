@@ -53,3 +53,14 @@ class TestPinholeCameraModel(unittest.TestCase):
             project_valid_depth_only=True,
             return_indices=True)
         testing.assert_equal(valid_indices, np.array([1]))
+
+    def test_flatten_uv(self):
+        cm = self.cm
+        flatten_uv = cm.flatten_uv(np.array([(1, 0), (100, 1), (100, 2)]))
+        testing.assert_equal(flatten_uv, [1, 740, 1380])
+
+    def test_flattened_pixel_locations_to_uv(self):
+        cm = self.cm
+        flatten_uv = [1, 740, 1380]
+        uv = cm.flattened_pixel_locations_to_uv(flatten_uv)
+        testing.assert_equal(uv, [(1, 0), (100, 1), (100, 2)])
