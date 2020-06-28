@@ -1,9 +1,15 @@
+import os.path as osp
 import unittest
 
 import numpy as np
 from numpy import testing
 
 from cameramodels import PinholeCameraModel
+
+
+data_dir = osp.join(osp.abspath(osp.dirname(__file__)), 'data')
+camera_info_path = osp.join(data_dir, 'camera_info.yaml')
+ros_camera_info_path = osp.join(data_dir, 'ros_camera_info.yaml')
 
 
 class TestPinholeCameraModel(unittest.TestCase):
@@ -64,3 +70,7 @@ class TestPinholeCameraModel(unittest.TestCase):
         flatten_uv = [1, 740, 1380]
         uv = cm.flattened_pixel_locations_to_uv(flatten_uv)
         testing.assert_equal(uv, [(1, 0), (100, 1), (100, 2)])
+
+    def test_from_yaml_file(self):
+        PinholeCameraModel.from_yaml_file(camera_info_path)
+        PinholeCameraModel.from_yaml_file(ros_camera_info_path)
