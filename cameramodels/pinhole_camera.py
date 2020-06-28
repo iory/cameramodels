@@ -548,6 +548,9 @@ class PinholeCameraModel(object):
     def from_yaml_file(filename):
         """Create instance of PinholeCameraModel from yaml file.
 
+        This function is supporting OpenCV calibration program's
+        YAML format and sensor_msgs/CameraInfo's YAML format in ROS.
+
         Parameters
         ----------
         filename : str
@@ -560,20 +563,35 @@ class PinholeCameraModel(object):
         """
         with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.FullLoader)
-        image_width = data['image_width']
-        image_height = data['image_height']
-        K = data['camera_matrix']['data']
-        P = data['projection_matrix']['data']
-        R = data['rectification_matrix']['data']
-        D = data['distortion_coefficients']['data']
-        if 'camera_name' in data:
-            name = data['camera_name']
-        else:
+        if 'image_width' in data:
+            # opencv format
+            image_width = data['image_width']
+            image_height = data['image_height']
+            K = data['camera_matrix']['data']
+            P = data['projection_matrix']['data']
+            R = data['rectification_matrix']['data']
+            D = data['distortion_coefficients']['data']
+            distortion_model = 'plumb_bob'
+            if 'camera_name' in data:
+                name = data['camera_name']
+            else:
+                name = ''
+        elif 'width' in data:
+            # ROS yaml format
+            image_width = data['width']
+            image_height = data['height']
+            K = data['K']
+            P = data['P']
+            R = data['R']
+            D = data['D']
+            distortion_model = data['distortion_model']
             name = ''
+        else:
+            raise RuntimeError("Not supported YAML file.")
         return PinholeCameraModel(
             image_height, image_width,
             K, P, R, D,
-            distortion_model=data['distortion_model'],
+            distortion_model=distortion_model,
             name=name)
 
     @staticmethod
