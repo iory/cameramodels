@@ -9,3 +9,4 @@ API Reference
    :maxdepth: 2
 
    pinhole_camera
+   stereo_camera

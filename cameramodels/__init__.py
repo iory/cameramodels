@@ -7,6 +7,7 @@ __version__ = pkg_resources.get_distribution('cameramodels').version
 
 
 from cameramodels.pinhole_camera import PinholeCameraModel
+from cameramodels.stereo_camera import StereoCameraModel
 
 import cameramodels.data
 import cameramodels.io
