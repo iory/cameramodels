@@ -95,7 +95,7 @@ class PinholeCameraModel(object):
         self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
         self.binning_x = None
         self.binning_y = None
-        self.roi = roi or [0, 0, self._height, self._width]
+        self._roi = roi or [0, 0, self._height, self._width]
         self.tf_frame = tf_frame
         self.stamp = stamp
 
@@ -366,6 +366,28 @@ class PinholeCameraModel(object):
         return self._full_P
 
     @property
+    def roi(self):
+        """Return roi
+
+        Returns
+        -------
+        self._roi : None or list[float]
+            [left_y, left_x, right_y, right_x] order.
+        """
+        return self._roi
+
+    @roi.setter
+    def roi(self, roi):
+        """Setter of roi.
+
+        Parameters
+        ----------
+        roi : list[float]
+            [left_y, left_x, right_y, right_x] order.
+        """
+        self._roi = roi
+
+    @property
     def open3d_intrinsic(self):
         """Return open3d.camera.PinholeCameraIntrinsic instance.
 
@@ -609,6 +631,7 @@ class PinholeCameraModel(object):
         """
         with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.FullLoader)
+        roi = None
         if 'image_width' in data:
             # opencv format
             image_width = data['image_width']
@@ -630,13 +653,30 @@ class PinholeCameraModel(object):
             P = data['P']
             R = data['R']
             D = data['D']
+
+            # ROI all zeros is considered the same as full resolution
+            if 'roi' in data:
+                x_offset = data['roi']['x_offset']
+                y_offset = data['roi']['y_offset']
+                roi_width = data['roi']['width']
+                roi_height = data['roi']['height']
+                if x_offset == 0 \
+                   and y_offset == 0 \
+                   and roi_width == 0 \
+                   and roi_height == 0:
+                    roi_width = image_width
+                    roi_height = image_height
+                roi = [y_offset,
+                       x_offset,
+                       y_offset + roi_height,
+                       x_offset + roi_width]
             distortion_model = data['distortion_model']
             name = ''
         else:
             raise RuntimeError("Not supported YAML file.")
         return PinholeCameraModel(
             image_height, image_width,
-            K, P, R, D,
+            K, P, R, D, roi=roi,
             distortion_model=distortion_model,
             name=name)
 
