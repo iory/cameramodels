@@ -634,6 +634,10 @@ class PinholeCameraModel(object):
                 raw_roi.width == 0 and raw_roi.height == 0):
             raw_roi.width = image_width
             raw_roi.height = image_height
+        else:
+            image_width = raw_roi.width
+            image_height = raw_roi.height
+
         roi = [raw_roi.y_offset,
                raw_roi.x_offset,
                raw_roi.y_offset + raw_roi.height,
