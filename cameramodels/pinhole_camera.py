@@ -44,6 +44,16 @@ class PinholeCameraModel(object):
         type of distortion model.
     name : None or str
         name of this camera.
+    full_K : numpy.ndarray or None
+        original intrinsic matrix of full resolution.
+        If `None`, set copy of K.
+    full_P : numpy.ndarray or None
+        original projection matrix of full resolution.
+        If `None`, set copy of P.
+    full_height : int or None
+        This value is indicating original image height.
+    full_width : int or None
+        This value is indicating original image width.
     """
 
     def __init__(self,
@@ -57,9 +67,15 @@ class PinholeCameraModel(object):
                  tf_frame=None,
                  stamp=None,
                  distortion_model='plumb_bob',
-                 name=''):
+                 name='',
+                 full_K=None,
+                 full_P=None,
+                 full_height=None,
+                 full_width=None):
         self._width = image_width
         self._height = image_height
+        self._full_width = full_width or self._width
+        self._full_height = full_height or self._height
         self._aspect = 1.0 * self.width / self.height
         self.K = K
         self.D = D
@@ -67,13 +83,19 @@ class PinholeCameraModel(object):
         self.P = P
         self.distortion_model = distortion_model
         self.name = name
-        self.full_K = None
-        self.full_P = None
+        if full_K is None:
+            self._full_K = full_K
+        else:
+            self._full_K = self.K.copy()
+        if full_P is None:
+            self._full_P = full_P
+        else:
+            self._full_P = self.P.copy()
         self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
         self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
         self.binning_x = None
         self.binning_y = None
-        self.roi = roi
+        self.roi = roi or [0, 0, self._height, self._width]
         self.tf_frame = tf_frame
         self.stamp = stamp
 
@@ -320,6 +342,28 @@ class PinholeCameraModel(object):
     @D.setter
     def D(self, d):
         self._D = np.array(d, dtype=np.float32)
+
+    @property
+    def full_K(self):
+        """Return the original camera matrix for full resolution
+
+        Returns
+        -------
+        self.full_K : numpy.ndarray
+            intrinsic matrix.
+        """
+        return self._full_K
+
+    @property
+    def full_P(self):
+        """Return the projection matrix for full resolution
+
+        Returns
+        -------
+        self.full_P : numpy.ndarray
+            projection matrix.
+        """
+        return self._full_P
 
     @property
     def open3d_intrinsic(self):
@@ -634,9 +678,6 @@ class PinholeCameraModel(object):
                 raw_roi.width == 0 and raw_roi.height == 0):
             raw_roi.width = image_width
             raw_roi.height = image_height
-        else:
-            image_width = raw_roi.width
-            image_height = raw_roi.height
 
         roi = [raw_roi.y_offset,
                raw_roi.x_offset,
@@ -645,6 +686,8 @@ class PinholeCameraModel(object):
         tf_frame = camera_info_msg.header.frame_id
         stamp = camera_info_msg.header.stamp
 
+        full_K = K.copy()
+        full_P = P.copy()
         # Adjust K and P for binning and ROI
         K[0, 0] /= binning_x
         K[1, 1] /= binning_y
@@ -655,12 +698,16 @@ class PinholeCameraModel(object):
         P[0, 2] = (P[0, 2] - raw_roi.x_offset) / binning_x
         P[1, 2] = (P[1, 2] - raw_roi.y_offset) / binning_y
         return PinholeCameraModel(
-            image_height, image_width,
+            raw_roi.height, raw_roi.width,
             K, P, R, D,
             roi,
             tf_frame,
             stamp,
-            distortion_model=camera_info_msg.distortion_model)
+            distortion_model=camera_info_msg.distortion_model,
+            full_K=full_K,
+            full_P=full_P,
+            full_height=image_height,
+            full_width=image_width)
 
     def crop_camera_info(self, x, y, height, width):
         """Return cropped region's camera model
@@ -673,6 +720,8 @@ class PinholeCameraModel(object):
         |     +-------+        |
         |       width          |
         +----------------------+
+
+        Returns the nested result if roi is already set
 
         Parameters
         ----------
@@ -699,14 +748,21 @@ class PinholeCameraModel(object):
         P[0, 2] = (P[0, 2] - x)
         P[1, 2] = (P[1, 2] - y)
 
-        roi = [y, x, y + height, x + width]
+        outer_y1, outer_x1, outer_y2, outer_x2 = self.roi
+        new_y = outer_y1 + y
+        new_x = outer_x1 + x
+        roi = [new_y, new_x, new_y + height, new_x + width]
         return PinholeCameraModel(
             height, width,
             K, P, self.R, self.D,
             roi,
             self.tf_frame,
             self.stamp,
-            distortion_model=self.distortion_model)
+            distortion_model=self.distortion_model,
+            full_P=self.full_P,
+            full_K=self.full_K,
+            full_height=self.height,
+            full_width=self.width)
 
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
@@ -959,14 +1015,14 @@ class PinholeCameraModel(object):
             output path
         """
         camera_data = "\n".join([
-                "image_width: %d" % self.width,
-                "image_height: %d" % self.height,
+                "image_width: %d" % self._full_width,
+                "image_height: %d" % self._full_height,
                 "camera_name: " + self.name,
                 "camera_matrix:",
                 "  rows: 3",
                 "  cols: 3",
                 "  data: " + format_mat(
-                    np.array(self.K.reshape(-1), dtype=np.float64), 5),
+                    np.array(self.full_K.reshape(-1), dtype=np.float64), 5),
                 "distortion_model: " + self.distortion_model,
                 "distortion_coefficients:",
                 "  rows: 1",
@@ -983,7 +1039,7 @@ class PinholeCameraModel(object):
                 "  rows: 3",
                 "  cols: 4",
                 "  data: " + format_mat(
-                    np.array(self.P.reshape(-1), dtype=np.float64), 5),
+                    np.array(self.full_P.reshape(-1), dtype=np.float64), 5),
                 ""
             ])
         with open(str(output_filepath), 'w') as f:
