@@ -4,6 +4,8 @@ import copy
 import yaml
 
 import numpy as np
+from PIL import Image
+from PIL import ImageDraw
 
 
 def format_mat(x, precision):
@@ -1115,3 +1117,65 @@ class PinholeCameraModel(object):
             ])
         with open(str(output_filepath), 'w') as f:
             f.write(camera_data)
+
+    def draw_roi(self, bgr_img, color=(46, 204, 113),
+                 box_width=None, copy=False):
+        """Draw Region of Interest
+
+        Parameters
+        ----------
+        bgr_img : numpy.ndarray
+            input image.
+        color : tuple(int)
+            RGB order color.
+        box_width : None or int
+            box width. If `None`, automatically set from image size.
+        copy : bool
+            If `True`, return copy image.
+            If input image is gray image, this option will be ignored.
+
+        Returns
+        -------
+        img : numpy.ndarray
+            ROI drawn image.
+        """
+        if bgr_img.ndim == 2:
+            img = bgr_img
+        elif bgr_img.ndim == 3:
+            if bgr_img.shape[2] == 3:
+                img = bgr_img[..., ::-1]
+            elif bgr_img.shape[2] == 4:
+                img = bgr_img[..., [2, 1, 0, 3]]
+            else:
+                raise ValueError('Input image is not valid rgb image')
+        else:
+            raise ValueError('Input image is not gray or rgb image.')
+
+        overlay = Image.new("RGBA", (img.shape[1], img.shape[0]), (0, 0, 0, 0))
+        trans_draw = ImageDraw.Draw(overlay)
+        y1, x1, y2, x2 = self.roi
+        box_width = box_width or max(int(round(max(overlay.size) / 180)), 1)
+        trans_draw.rectangle((x1, y1, x2, y2), outline=color + (255,),
+                             width=box_width)
+        pil_img = Image.fromarray(img)
+        mode = pil_img.mode
+        pil_img = pil_img.convert("RGBA")
+        # import ipdb
+        # ipdb.set_trace()
+        pil_img = Image.alpha_composite(pil_img, overlay)
+        if mode == 'L' or mode == 'RGB':
+            pil_img = pil_img.convert('RGB')
+        elif mode == 'RGBA':
+            pil_img = pil_img.convert('RGBA')
+        else:
+            raise NotImplementedError
+
+        rgb_to_bgr_indices = [2, 1, 0]
+        if mode == 'RGBA':
+            rgb_to_bgr_indices += [3]
+        if mode == 'L' or copy:
+            return np.array(pil_img, dtype=img.dtype)[..., rgb_to_bgr_indices]
+        else:
+            np_pil_img = np.array(pil_img, dtype=img.dtype)
+            bgr_img[:] = np_pil_img[..., rgb_to_bgr_indices]
+            return bgr_img
