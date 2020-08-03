@@ -20,6 +20,9 @@ class TestPinholeCameraModel(unittest.TestCase):
     def setUpClass(cls):
         cls.cm = PinholeCameraModel.from_fovy(45, 480, 640)
 
+    def test_crop_camera_info(self):
+        self.cm.crop_camera_info(0, 0, 100, 100)
+
     def test_calc_f_from_fov(self):
         f = PinholeCameraModel.calc_f_from_fov(90, 480)
         testing.assert_almost_equal(
