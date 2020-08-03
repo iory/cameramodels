@@ -764,6 +764,37 @@ class PinholeCameraModel(object):
             full_height=self.height,
             full_width=self.width)
 
+    def crop_image(self, img, copy=False):
+        """Crop input full resolution image considering roi.
+
+        Parameters
+        ----------
+        img : numpy.ndarray
+            input image. (H, W, channel)
+        copy : bool
+            if `True`, return copy image.
+
+        Returns
+        -------
+        cropped_img : numpy.ndarray
+            cropped image.
+        """
+        if img.ndim == 3:
+            H, W, _ = img.shape
+        elif img.ndim == 2:
+            H, W = img.shape
+        else:
+            raise ValueError('Input image is not gray or rgb image.')
+        if H != self._full_height or W != self._full_width:
+            raise ValueError('Input image shape should be ({}, {})'
+                             ', given ({}, {})'.format(
+                                 self._full_width, self._full_height, W, H))
+        y1, x1, y2, x2 = self.roi
+        if copy:
+            return img[y1:y2, x1:x2].copy()
+        else:
+            return img[y1:y2, x1:x2]
+
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
 
