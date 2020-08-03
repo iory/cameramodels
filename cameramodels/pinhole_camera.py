@@ -662,6 +662,52 @@ class PinholeCameraModel(object):
             stamp,
             distortion_model=camera_info_msg.distortion_model)
 
+    def crop_camera_info(self, x, y, height, width):
+        """Return cropped region's camera model
+
+        +----------------------+
+        |                      |
+        |  (x, y)              |
+        |     +-------+        |
+        |     |  ROI  | height |
+        |     +-------+        |
+        |       width          |
+        +----------------------+
+
+        Parameters
+        ----------
+        x : int
+            Leftmost pixel of the ROI.
+            0 if the ROI includes the left edge of the image.
+        y : int
+            Topmost pixel of the ROI.
+            0 if the ROI includes the top edge of the image.
+        height : int
+            Height of ROI.
+        width : int
+            Width of ROI.
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model of cropped region.
+        """
+        K = self.K
+        K[0, 2] = (K[0, 2] - x)
+        K[1, 2] = (K[1, 2] - y)
+        P = self.P
+        P[0, 2] = (P[0, 2] - x)
+        P[1, 2] = (P[1, 2] - y)
+
+        roi = [y, x, y + height, x + width]
+        return PinholeCameraModel(
+            height, width,
+            K, P, self.R, self.D,
+            roi,
+            self.tf_frame,
+            self.stamp,
+            distortion_model=self.distortion_model)
+
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
 
