@@ -619,6 +619,12 @@ class PinholeCameraModel(object):
         P = np.array(camera_info_msg.P, dtype=np.float32).reshape(3, 4)
         image_width = camera_info_msg.width
         image_height = camera_info_msg.height
+
+        # Binning refers here to any camera setting which combines rectangular
+        #  neighborhoods of pixels into larger "super-pixels." It reduces the
+        #  resolution of the output image to
+        #  (width / binning_x) x (height / binning_y).
+        # The default values binning_x = binning_y = 0 is consider
         binning_x = max(1, camera_info_msg.binning_x)
         binning_y = max(1, camera_info_msg.binning_y)
 
