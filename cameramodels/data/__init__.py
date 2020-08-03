@@ -8,7 +8,7 @@ data_dir = osp.abspath(osp.dirname(__file__))
 
 def kinect_v2_image():
     pil_img = Image.open(osp.join(data_dir, 'kinect_v2', 'hd.jpg'))
-    return np.array(pil_img, dtype=np.uint8)[..., ::-1]
+    return np.ascontiguousarray(np.array(pil_img)[..., ::-1], dtype=np.uint8)
 
 
 def kinect_v2_camera_info():
