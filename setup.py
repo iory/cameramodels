@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import distutils.spawn
+import os
 import shlex
 import subprocess
 import sys
@@ -9,7 +10,7 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-version = '0.1.6'
+version = '0.1.8'
 
 
 if sys.argv[-1] == 'release':
@@ -32,9 +33,21 @@ if sys.argv[-1] == 'release':
     sys.exit(0)
 
 
+def listup_package_data():
+    data_files = []
+    for root, _, files in os.walk('cameramodels/data'):
+        for filename in files:
+            data_files.append(
+                os.path.join(
+                    root[len('cameramodels/'):],
+                    filename))
+    return data_files
+
+
 setup_requires = []
 install_requires = [
     'numpy',
+    'pillow',
     'pyyaml',
 ]
 
@@ -61,6 +74,7 @@ setup(
         'Programming Language :: Python :: Implementation :: CPython',
     ],
     packages=find_packages(),
+    package_data={'cameramodels': listup_package_data()},
     zip_safe=False,
     setup_requires=setup_requires,
     install_requires=install_requires,

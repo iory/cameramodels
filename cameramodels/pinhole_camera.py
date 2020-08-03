@@ -1,7 +1,11 @@
+from __future__ import division
+
 import copy
 import yaml
 
 import numpy as np
+from PIL import Image
+from PIL import ImageDraw
 
 
 def format_mat(x, precision):
@@ -42,6 +46,16 @@ class PinholeCameraModel(object):
         type of distortion model.
     name : None or str
         name of this camera.
+    full_K : numpy.ndarray or None
+        original intrinsic matrix of full resolution.
+        If `None`, set copy of K.
+    full_P : numpy.ndarray or None
+        original projection matrix of full resolution.
+        If `None`, set copy of P.
+    full_height : int or None
+        This value is indicating original image height.
+    full_width : int or None
+        This value is indicating original image width.
     """
 
     def __init__(self,
@@ -55,9 +69,15 @@ class PinholeCameraModel(object):
                  tf_frame=None,
                  stamp=None,
                  distortion_model='plumb_bob',
-                 name=''):
+                 name='',
+                 full_K=None,
+                 full_P=None,
+                 full_height=None,
+                 full_width=None):
         self._width = image_width
         self._height = image_height
+        self._full_width = full_width or self._width
+        self._full_height = full_height or self._height
         self._aspect = 1.0 * self.width / self.height
         self.K = K
         self.D = D
@@ -65,13 +85,19 @@ class PinholeCameraModel(object):
         self.P = P
         self.distortion_model = distortion_model
         self.name = name
-        self.full_K = None
-        self.full_P = None
+        if full_K is None:
+            self._full_K = full_K
+        else:
+            self._full_K = self.K.copy()
+        if full_P is None:
+            self._full_P = full_P
+        else:
+            self._full_P = self.P.copy()
         self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
         self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
         self.binning_x = None
         self.binning_y = None
-        self.roi = roi
+        self._roi = roi or [0, 0, self._height, self._width]
         self.tf_frame = tf_frame
         self.stamp = stamp
 
@@ -320,6 +346,50 @@ class PinholeCameraModel(object):
         self._D = np.array(d, dtype=np.float32)
 
     @property
+    def full_K(self):
+        """Return the original camera matrix for full resolution
+
+        Returns
+        -------
+        self.full_K : numpy.ndarray
+            intrinsic matrix.
+        """
+        return self._full_K
+
+    @property
+    def full_P(self):
+        """Return the projection matrix for full resolution
+
+        Returns
+        -------
+        self.full_P : numpy.ndarray
+            projection matrix.
+        """
+        return self._full_P
+
+    @property
+    def roi(self):
+        """Return roi
+
+        Returns
+        -------
+        self._roi : None or list[float]
+            [left_y, left_x, right_y, right_x] order.
+        """
+        return self._roi
+
+    @roi.setter
+    def roi(self, roi):
+        """Setter of roi.
+
+        Parameters
+        ----------
+        roi : list[float]
+            [left_y, left_x, right_y, right_x] order.
+        """
+        self._roi = roi
+
+    @property
     def open3d_intrinsic(self):
         """Return open3d.camera.PinholeCameraIntrinsic instance.
 
@@ -563,6 +633,7 @@ class PinholeCameraModel(object):
         """
         with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.FullLoader)
+        roi = None
         if 'image_width' in data:
             # opencv format
             image_width = data['image_width']
@@ -584,13 +655,30 @@ class PinholeCameraModel(object):
             P = data['P']
             R = data['R']
             D = data['D']
+
+            # ROI all zeros is considered the same as full resolution
+            if 'roi' in data:
+                x_offset = data['roi']['x_offset']
+                y_offset = data['roi']['y_offset']
+                roi_width = data['roi']['width']
+                roi_height = data['roi']['height']
+                if x_offset == 0 \
+                   and y_offset == 0 \
+                   and roi_width == 0 \
+                   and roi_height == 0:
+                    roi_width = image_width
+                    roi_height = image_height
+                roi = [y_offset,
+                       x_offset,
+                       y_offset + roi_height,
+                       x_offset + roi_width]
             distortion_model = data['distortion_model']
             name = ''
         else:
             raise RuntimeError("Not supported YAML file.")
         return PinholeCameraModel(
             image_height, image_width,
-            K, P, R, D,
+            K, P, R, D, roi=roi,
             distortion_model=distortion_model,
             name=name)
 
@@ -617,6 +705,12 @@ class PinholeCameraModel(object):
         P = np.array(camera_info_msg.P, dtype=np.float32).reshape(3, 4)
         image_width = camera_info_msg.width
         image_height = camera_info_msg.height
+
+        # Binning refers here to any camera setting which combines rectangular
+        #  neighborhoods of pixels into larger "super-pixels." It reduces the
+        #  resolution of the output image to
+        #  (width / binning_x) x (height / binning_y).
+        # The default values binning_x = binning_y = 0 is consider
         binning_x = max(1, camera_info_msg.binning_x)
         binning_y = max(1, camera_info_msg.binning_y)
 
@@ -626,6 +720,7 @@ class PinholeCameraModel(object):
                 raw_roi.width == 0 and raw_roi.height == 0):
             raw_roi.width = image_width
             raw_roi.height = image_height
+
         roi = [raw_roi.y_offset,
                raw_roi.x_offset,
                raw_roi.y_offset + raw_roi.height,
@@ -633,6 +728,8 @@ class PinholeCameraModel(object):
         tf_frame = camera_info_msg.header.frame_id
         stamp = camera_info_msg.header.stamp
 
+        full_K = K.copy()
+        full_P = P.copy()
         # Adjust K and P for binning and ROI
         K[0, 0] /= binning_x
         K[1, 1] /= binning_y
@@ -643,12 +740,102 @@ class PinholeCameraModel(object):
         P[0, 2] = (P[0, 2] - raw_roi.x_offset) / binning_x
         P[1, 2] = (P[1, 2] - raw_roi.y_offset) / binning_y
         return PinholeCameraModel(
-            image_height, image_width,
+            raw_roi.height, raw_roi.width,
             K, P, R, D,
             roi,
             tf_frame,
             stamp,
-            distortion_model=camera_info_msg.distortion_model)
+            distortion_model=camera_info_msg.distortion_model,
+            full_K=full_K,
+            full_P=full_P,
+            full_height=image_height,
+            full_width=image_width)
+
+    def crop_camera_info(self, x, y, height, width):
+        """Return cropped region's camera model
+
+        +----------------------+
+        |                      |
+        |  (x, y)              |
+        |     +-------+        |
+        |     |  ROI  | height |
+        |     +-------+        |
+        |       width          |
+        +----------------------+
+
+        Returns the nested result if roi is already set
+
+        Parameters
+        ----------
+        x : int
+            Leftmost pixel of the ROI.
+            0 if the ROI includes the left edge of the image.
+        y : int
+            Topmost pixel of the ROI.
+            0 if the ROI includes the top edge of the image.
+        height : int
+            Height of ROI.
+        width : int
+            Width of ROI.
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model of cropped region.
+        """
+        K = self.K
+        K[0, 2] = (K[0, 2] - x)
+        K[1, 2] = (K[1, 2] - y)
+        P = self.P
+        P[0, 2] = (P[0, 2] - x)
+        P[1, 2] = (P[1, 2] - y)
+
+        outer_y1, outer_x1, outer_y2, outer_x2 = self.roi
+        new_y = outer_y1 + y
+        new_x = outer_x1 + x
+        roi = [new_y, new_x, new_y + height, new_x + width]
+        return PinholeCameraModel(
+            height, width,
+            K, P, self.R, self.D,
+            roi,
+            self.tf_frame,
+            self.stamp,
+            distortion_model=self.distortion_model,
+            full_P=self.full_P,
+            full_K=self.full_K,
+            full_height=self.height,
+            full_width=self.width)
+
+    def crop_image(self, img, copy=False):
+        """Crop input full resolution image considering roi.
+
+        Parameters
+        ----------
+        img : numpy.ndarray
+            input image. (H, W, channel)
+        copy : bool
+            if `True`, return copy image.
+
+        Returns
+        -------
+        cropped_img : numpy.ndarray
+            cropped image.
+        """
+        if img.ndim == 3:
+            H, W, _ = img.shape
+        elif img.ndim == 2:
+            H, W = img.shape
+        else:
+            raise ValueError('Input image is not gray or rgb image.')
+        if H != self._full_height or W != self._full_width:
+            raise ValueError('Input image shape should be ({}, {})'
+                             ', given ({}, {})'.format(
+                                 self._full_width, self._full_height, W, H))
+        y1, x1, y2, x2 = self.roi
+        if copy:
+            return img[y1:y2, x1:x2].copy()
+        else:
+            return img[y1:y2, x1:x2]
 
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
@@ -901,14 +1088,14 @@ class PinholeCameraModel(object):
             output path
         """
         camera_data = "\n".join([
-                "image_width: %d" % self.width,
-                "image_height: %d" % self.height,
+                "image_width: %d" % self._full_width,
+                "image_height: %d" % self._full_height,
                 "camera_name: " + self.name,
                 "camera_matrix:",
                 "  rows: 3",
                 "  cols: 3",
                 "  data: " + format_mat(
-                    np.array(self.K.reshape(-1), dtype=np.float64), 5),
+                    np.array(self.full_K.reshape(-1), dtype=np.float64), 5),
                 "distortion_model: " + self.distortion_model,
                 "distortion_coefficients:",
                 "  rows: 1",
@@ -925,8 +1112,70 @@ class PinholeCameraModel(object):
                 "  rows: 3",
                 "  cols: 4",
                 "  data: " + format_mat(
-                    np.array(self.P.reshape(-1), dtype=np.float64), 5),
+                    np.array(self.full_P.reshape(-1), dtype=np.float64), 5),
                 ""
             ])
         with open(str(output_filepath), 'w') as f:
             f.write(camera_data)
+
+    def draw_roi(self, bgr_img, color=(46, 204, 113),
+                 box_width=None, copy=False):
+        """Draw Region of Interest
+
+        Parameters
+        ----------
+        bgr_img : numpy.ndarray
+            input image.
+        color : tuple(int)
+            RGB order color.
+        box_width : None or int
+            box width. If `None`, automatically set from image size.
+        copy : bool
+            If `True`, return copy image.
+            If input image is gray image, this option will be ignored.
+
+        Returns
+        -------
+        img : numpy.ndarray
+            ROI drawn image.
+        """
+        if bgr_img.ndim == 2:
+            img = bgr_img
+        elif bgr_img.ndim == 3:
+            if bgr_img.shape[2] == 3:
+                img = bgr_img[..., ::-1]
+            elif bgr_img.shape[2] == 4:
+                img = bgr_img[..., [2, 1, 0, 3]]
+            else:
+                raise ValueError('Input image is not valid rgb image')
+        else:
+            raise ValueError('Input image is not gray or rgb image.')
+
+        overlay = Image.new("RGBA", (img.shape[1], img.shape[0]), (0, 0, 0, 0))
+        trans_draw = ImageDraw.Draw(overlay)
+        y1, x1, y2, x2 = self.roi
+        box_width = box_width or max(int(round(max(overlay.size) / 180)), 1)
+        trans_draw.rectangle((x1, y1, x2, y2), outline=color + (255,),
+                             width=box_width)
+        pil_img = Image.fromarray(img)
+        mode = pil_img.mode
+        pil_img = pil_img.convert("RGBA")
+        # import ipdb
+        # ipdb.set_trace()
+        pil_img = Image.alpha_composite(pil_img, overlay)
+        if mode == 'L' or mode == 'RGB':
+            pil_img = pil_img.convert('RGB')
+        elif mode == 'RGBA':
+            pil_img = pil_img.convert('RGBA')
+        else:
+            raise NotImplementedError
+
+        rgb_to_bgr_indices = [2, 1, 0]
+        if mode == 'RGBA':
+            rgb_to_bgr_indices += [3]
+        if mode == 'L' or copy:
+            return np.array(pil_img, dtype=img.dtype)[..., rgb_to_bgr_indices]
+        else:
+            np_pil_img = np.array(pil_img, dtype=img.dtype)
+            bgr_img[:] = np_pil_img[..., rgb_to_bgr_indices]
+            return bgr_img

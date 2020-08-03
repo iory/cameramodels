@@ -3,9 +3,11 @@ import unittest
 
 import numpy as np
 from numpy import testing
+from PIL import Image
 
+from cameramodels.data import kinect_v2_camera_info
+from cameramodels.data import kinect_v2_image
 from cameramodels import PinholeCameraModel
-
 
 data_dir = osp.join(osp.abspath(osp.dirname(__file__)), 'data')
 camera_info_path = osp.join(data_dir, 'camera_info.yaml')
@@ -19,6 +21,21 @@ class TestPinholeCameraModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.cm = PinholeCameraModel.from_fovy(45, 480, 640)
+
+    def test_crop_camera_info(self):
+        self.cm.crop_camera_info(0, 0, 100, 100)
+
+    def test_crop_image(self):
+        cropped_cm = self.cm.crop_camera_info(0, 0, 100, 100)
+        img = np.zeros((480, 640))
+        ret_img = cropped_cm.crop_image(img)
+        testing.assert_equal(ret_img.shape, (100, 100))
+
+        with self.assertRaises(ValueError):
+            cropped_cm.crop_image(np.zeros(100))
+
+        with self.assertRaises(ValueError):
+            cropped_cm.crop_image(np.zeros((100, 100)))
 
     def test_calc_f_from_fov(self):
         f = PinholeCameraModel.calc_f_from_fov(90, 480)
@@ -74,3 +91,25 @@ class TestPinholeCameraModel(unittest.TestCase):
     def test_from_yaml_file(self):
         PinholeCameraModel.from_yaml_file(camera_info_path)
         PinholeCameraModel.from_yaml_file(ros_camera_info_path)
+
+    def test_draw_roi(self):
+        cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
+        img_org = kinect_v2_image()
+        img = img_org.copy()
+        cm.draw_roi(img, copy=True)
+        testing.assert_equal(img, img_org)
+
+        pil_img = Image.fromarray(img_org)
+        gray_pil_img = pil_img.convert("L")
+        gray_img_org = np.array(gray_pil_img, dtype=np.uint8)
+        gray_img = gray_img_org.copy()
+        cm.draw_roi(gray_img, copy=False)
+        testing.assert_equal(gray_img, gray_img_org)
+        cm.draw_roi(gray_img, copy=True)  # ignore copy=True
+        testing.assert_equal(gray_img, gray_img_org)
+
+        alpha_pil_img = pil_img.convert("RGBA")
+        alpha_img_org = np.array(alpha_pil_img, dtype=np.uint8)
+        alpha_img = alpha_img_org.copy()
+        cm.draw_roi(alpha_img, copy=True)
+        testing.assert_equal(alpha_img, alpha_img_org)
