@@ -1,3 +1,4 @@
+import copy
 import os.path as osp
 import unittest
 
@@ -113,3 +114,20 @@ class TestPinholeCameraModel(unittest.TestCase):
         alpha_img = alpha_img_org.copy()
         cm.draw_roi(alpha_img, copy=True)
         testing.assert_equal(alpha_img, alpha_img_org)
+
+    def test__roi(self):
+        cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
+        org_roi = copy.deepcopy(cm.roi)
+        org_K = cm.K.copy()
+        org_P = cm.P.copy()
+
+        cm.roi = [0, 0, 100, 100]
+        testing.assert_almost_equal(org_K[:3, :2], cm.K[:3, :2])
+        testing.assert_almost_equal(cm.K[:2, 2], [951.8467, 506.9212],
+                                    decimal=3)
+        testing.assert_almost_equal(org_P[:3, :2], cm.P[:3, :2])
+        testing.assert_almost_equal(cm.P[:2, 2], [951.8467, 506.9212],
+                                    decimal=3)
+        cm.roi = org_roi
+        testing.assert_almost_equal(org_K, cm.K)
+        testing.assert_almost_equal(org_P, cm.P)
