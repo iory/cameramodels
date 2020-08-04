@@ -4,6 +4,7 @@ import copy
 import yaml
 
 import numpy as np
+import PIL
 from PIL import Image
 from PIL import ImageDraw
 
@@ -955,6 +956,46 @@ class PinholeCameraModel(object):
             return img[y1:y2, x1:x2].copy()
         else:
             return img[y1:y2, x1:x2]
+
+    def crop_resize_image(self, img, interpolation=PIL.Image.BILINEAR):
+        """Crop and resize input full resolution image.
+
+        Parameters
+        ----------
+        img : numpy.ndarray
+            input image. (H, W, channel)
+        interpolation : int
+            interpolation method.
+            You can specify, PIL.Image.NEAREST, PIL.Image.BILINEAR,
+            PIL.Image.BICUBIC and PIL.Image.LANCZOS.
+
+        Returns
+        -------
+        out : numpy.ndarray
+            cropped and resized image.
+        """
+        y1, x1, y2, x2 = self.roi
+        if self._target_size is None:
+            raise ValueError('Target size is not specified')
+
+        out_shape = self._target_size
+        if img.ndim == 3:
+            H, W, C = img.shape
+            out_shape += (C, )
+        elif img.ndim == 2:
+            H, W = img.shape
+        else:
+            raise ValueError('Input image is not gray or rgb image.')
+        if H != self._full_height or W != self._full_width:
+            raise ValueError('Input image shape should be ({}, {})'
+                             ', given ({}, {})'.format(
+                                 self._full_width, self._full_height, W, H))
+
+        cropped_img = img[y1:y2, x1:x2]
+        out = np.empty(out_shape, dtype=img.dtype)
+        pil_img = Image.fromarray(cropped_img)
+        out[:] = pil_img.resize(self._target_size, resample=interpolation)
+        return out
 
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector

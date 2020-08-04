@@ -47,6 +47,26 @@ class TestPinholeCameraModel(unittest.TestCase):
         with self.assertRaises(ValueError):
             cropped_cm.crop_image(np.zeros((100, 100)))
 
+    def test_crop_resize_image(self):
+        cropped_cm = copy.deepcopy(self.cm)
+        cropped_cm.roi = [0, 0, 100, 100]
+        gray_img = np.zeros((480, 640), dtype=np.uint8)
+        cropped_cm.target_size = (256, 256)
+        ret_img = cropped_cm.crop_resize_image(gray_img)
+        testing.assert_equal(ret_img.shape, (256, 256))
+
+        bgr_img = np.zeros((480, 640, 3), dtype=np.uint8)
+        cropped_cm.target_size = (10, 10)
+        ret_img = cropped_cm.crop_resize_image(bgr_img)
+        testing.assert_equal(ret_img.shape, (10, 10, 3))
+
+        with self.assertRaises(ValueError):
+            cropped_cm.crop_resize_image(np.zeros(100))
+
+        with self.assertRaises(ValueError):
+            cropped_cm.crop_resize_image(
+                np.zeros((100, 100), dtype=np.uint8))
+
     def test_calc_f_from_fov(self):
         f = PinholeCameraModel.calc_f_from_fov(90, 480)
         testing.assert_almost_equal(
