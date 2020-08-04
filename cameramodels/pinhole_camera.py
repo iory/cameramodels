@@ -847,8 +847,8 @@ class PinholeCameraModel(object):
 
         roi = self.roi if roi is None else roi
 
-        binning_x = roi[3] / target_size[1]
-        binning_y = roi[2] / target_size[0]
+        binning_x = (roi[3] - roi[1]) / target_size[1]
+        binning_y = (roi[2] - roi[0]) / target_size[0]
 
         return PinholeCameraModel(
             self.height, self.width,
