@@ -25,7 +25,7 @@ class TestPinholeCameraModel(unittest.TestCase):
 
     def test_crop_resize_camra_info(self):
         cropped_resized_cm = self.cm.crop_resize_camera_info(
-            target_size=[200, 100], roi=[0, 0, 100, 150])
+            target_size=[100, 200], roi=[0, 0, 100, 150])
         testing.assert_equal(cropped_resized_cm.binning_x, 150 / 100.)
         testing.assert_equal(cropped_resized_cm.binning_y, 100 / 200.)
 
@@ -123,6 +123,30 @@ class TestPinholeCameraModel(unittest.TestCase):
         alpha_img = alpha_img_org.copy()
         cm.draw_roi(alpha_img, copy=True)
         testing.assert_equal(alpha_img, alpha_img_org)
+
+    def test__binning_x(self):
+        cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
+        cm.roi = [0, 0, 100, 100]
+        cm.target_size = (256, 256)
+        cm.binning_x = 0.5
+        self.assertEqual(cm.target_size, (200, 256))
+
+        cm.target_size = (256, 256)
+        cm.roi = [0, 0, 100, 97]
+        cm.binning_x = 2
+        self.assertEqual(cm.target_size, (48, 256))
+
+    def test__binning_y(self):
+        cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
+        cm.roi = [0, 0, 100, 100]
+        cm.target_size = (256, 256)
+        cm.binning_y = 0.5
+        self.assertEqual(cm.target_size, (256, 200))
+
+        cm.target_size = (256, 256)
+        cm.roi = [0, 0, 97, 100]
+        cm.binning_y = 2
+        self.assertEqual(cm.target_size, (256, 48))
 
     def test__roi(self):
         cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
