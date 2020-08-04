@@ -834,7 +834,7 @@ class PinholeCameraModel(object):
         target_size : list[int]
             [target_width, target_height] order.
         roi : list[float]
-            [left_y, left_x, right_y, right_x] order, by default self.roi.
+            [top, left, bottom, right] order, by default self.roi.
 
         Returns
         -------
@@ -847,8 +847,15 @@ class PinholeCameraModel(object):
 
         roi = self.roi if roi is None else roi
 
-        binning_x = (roi[3] - roi[1]) / target_size[1]
-        binning_y = (roi[2] - roi[0]) / target_size[0]
+        roi_height = roi[2] - roi[0]
+        roi_width = roi[3] - roi[1]
+        if roi_height <= 0 or roi_width <= 0:
+            raise ValueError(
+                "Invalid ROI, [left: {}, top: {}, right: {}, bottom: {}]".
+                format(roi[0], roi[1], roi[2], roi[3]))
+
+        binning_x = roi_width / target_size[1]
+        binning_y = roi_height / target_size[0]
 
         return PinholeCameraModel(
             self.height, self.width,

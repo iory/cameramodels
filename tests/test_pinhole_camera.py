@@ -29,6 +29,11 @@ class TestPinholeCameraModel(unittest.TestCase):
         testing.assert_equal(cropped_resized_cm.binning_x, 150 / 100.)
         testing.assert_equal(cropped_resized_cm.binning_y, 100 / 200.)
 
+        with self.assertRaises(ValueError):
+            # invalid roi
+            cropped_resized_cm = self.cm.crop_resize_camera_info(
+                target_size=[200, 100], roi=[200, 0, 100, 150])
+
     def test_crop_image(self):
         cropped_cm = copy.deepcopy(self.cm)
         cropped_cm.roi = [0, 0, 100, 100]
