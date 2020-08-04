@@ -73,7 +73,9 @@ class PinholeCameraModel(object):
                  full_K=None,
                  full_P=None,
                  full_height=None,
-                 full_width=None):
+                 full_width=None,
+                 binning_x=1,
+                 binning_y=1):
         self._width = image_width
         self._height = image_height
         self._full_width = full_width or self._width
@@ -85,19 +87,19 @@ class PinholeCameraModel(object):
         self.P = P
         self.distortion_model = distortion_model
         self.name = name
-        if full_K is None:
+        if full_K is not None:
             self._full_K = full_K
         else:
             self._full_K = self.K.copy()
-        if full_P is None:
+        if full_P is not None:
             self._full_P = full_P
         else:
             self._full_P = self.P.copy()
         self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
         self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
-        self.binning_x = None
-        self.binning_y = None
-        self._roi = roi or [0, 0, self._height, self._width]
+        self.binning_x = binning_x
+        self.binning_y = binning_y
+        self.roi = roi or [0, 0, self._height, self._width]
         self.tf_frame = tf_frame
         self.stamp = stamp
 
@@ -368,6 +370,50 @@ class PinholeCameraModel(object):
         return self._full_P
 
     @property
+    def binning_x(self):
+        """Return number of pixels to decimate to one horizontally.
+
+        Returns
+        -------
+        self._binning_x : int
+            binning x.
+        """
+        return self._binning_x
+
+    @binning_x.setter
+    def binning_x(self, decimation_x):
+        """Setter of binning_x
+
+        Parameters
+        -----------
+        decimation_x : int
+            decimation value.
+        """
+        self._binning_x = max(int(decimation_x), 1)
+
+    @property
+    def binning_y(self):
+        """Return number of pixels to decimate to one vertically.
+
+        Returns
+        -------
+        self._binning_y : int
+            binning y.
+        """
+        return self._binning_y
+
+    @binning_y.setter
+    def binning_y(self, decimation_y):
+        """Setter of binning_y
+
+        Parameters
+        -----------
+        decimation_y : int
+            decimation value.
+        """
+        self._binning_y = max(int(decimation_y), 1)
+
+    @property
     def roi(self):
         """Return roi
 
@@ -387,6 +433,20 @@ class PinholeCameraModel(object):
         roi : list[float]
             [left_y, left_x, right_y, right_x] order.
         """
+        y1, x1, y2, x2 = roi
+        K = self.full_K.copy()
+        K[0, 2] = (K[0, 2] - x1)
+        K[1, 2] = (K[1, 2] - y1)
+        P = self.full_P.copy()
+        P[0, 2] = (P[0, 2] - x1)
+        P[1, 2] = (P[1, 2] - y1)
+
+        height = y2 - y1
+        width = x2 - x1
+        self.K = K
+        self.P = P
+        self._width = width
+        self._height = height
         self._roi = roi
 
     @property
@@ -749,7 +809,9 @@ class PinholeCameraModel(object):
             full_K=full_K,
             full_P=full_P,
             full_height=image_height,
-            full_width=image_width)
+            full_width=image_width,
+            binning_x=binning_x,
+            binning_y=binning_y)
 
     def crop_camera_info(self, x, y, height, width):
         """Return cropped region's camera model
@@ -1160,8 +1222,6 @@ class PinholeCameraModel(object):
         pil_img = Image.fromarray(img)
         mode = pil_img.mode
         pil_img = pil_img.convert("RGBA")
-        # import ipdb
-        # ipdb.set_trace()
         pil_img = Image.alpha_composite(pil_img, overlay)
         if mode == 'L' or mode == 'RGB':
             pil_img = pil_img.convert('RGB')
