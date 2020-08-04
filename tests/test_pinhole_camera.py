@@ -24,7 +24,11 @@ class TestPinholeCameraModel(unittest.TestCase):
         cls.cm = PinholeCameraModel.from_fovy(45, 480, 640)
 
     def test_crop_camera_info(self):
-        self.cm.crop_camera_info(0, 0, 100, 100)
+        cm = self.cm.crop_camera_info(0, 0, 100, 100)
+        testing.assert_equal(cm._full_width, 640)
+        testing.assert_equal(cm._full_height, 480)
+        testing.assert_equal(cm.width, 100)
+        testing.assert_equal(cm.height, 100)
 
     def test_crop_image(self):
         cropped_cm = self.cm.crop_camera_info(0, 0, 100, 100)

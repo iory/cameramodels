@@ -816,16 +816,15 @@ class PinholeCameraModel(object):
     def crop_camera_info(self, x, y, height, width):
         """Return cropped region's camera model
 
-        +----------------------+
-        |                      |
-        |  (x, y)              |
-        |     +-------+        |
-        |     |  ROI  | height |
-        |     +-------+        |
-        |       width          |
-        +----------------------+
-
-        Returns the nested result if roi is already set
+        +----------------------+--
+        |                      | |
+        |  (x, y)              | |
+        |     +-------+        | self._full_height
+        |     |  ROI  | height | |
+        |     +-------+        | |
+        |       width          | |
+        +----------------------+--
+        |--self._full_width----|
 
         Parameters
         ----------
@@ -845,17 +844,14 @@ class PinholeCameraModel(object):
         cameramodel : cameramodels.PinholeCameraModel
             camera model of cropped region.
         """
-        K = self.K
+        K = self.full_K.copy()
         K[0, 2] = (K[0, 2] - x)
         K[1, 2] = (K[1, 2] - y)
-        P = self.P
+        P = self.full_P.copy()
         P[0, 2] = (P[0, 2] - x)
         P[1, 2] = (P[1, 2] - y)
 
-        outer_y1, outer_x1, outer_y2, outer_x2 = self.roi
-        new_y = outer_y1 + y
-        new_x = outer_x1 + x
-        roi = [new_y, new_x, new_y + height, new_x + width]
+        roi = [y, x, y + height, x + width]
         return PinholeCameraModel(
             height, width,
             K, P, self.R, self.D,
@@ -865,8 +861,8 @@ class PinholeCameraModel(object):
             distortion_model=self.distortion_model,
             full_P=self.full_P,
             full_K=self.full_K,
-            full_height=self.height,
-            full_width=self.width)
+            full_height=self._full_height,
+            full_width=self._full_width)
 
     def crop_image(self, img, copy=False):
         """Crop input full resolution image considering roi.
