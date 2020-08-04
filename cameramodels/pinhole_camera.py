@@ -389,7 +389,7 @@ class PinholeCameraModel(object):
         decimation_x : int
             decimation value.
         """
-        self._binning_x = max(int(decimation_x), 1)
+        self._binning_x = decimation_x
 
     @property
     def binning_y(self):
@@ -411,7 +411,7 @@ class PinholeCameraModel(object):
         decimation_y : int
             decimation value.
         """
-        self._binning_y = max(int(decimation_y), 1)
+        self._binning_y = decimation_y
 
     @property
     def roi(self):
@@ -435,11 +435,16 @@ class PinholeCameraModel(object):
         """
         y1, x1, y2, x2 = roi
         K = self.full_K.copy()
-        K[0, 2] = (K[0, 2] - x1)
-        K[1, 2] = (K[1, 2] - y1)
         P = self.full_P.copy()
-        P[0, 2] = (P[0, 2] - x1)
-        P[1, 2] = (P[1, 2] - y1)
+        # Adjust K and P for binning and ROI
+        K[0, 0] /= self._binning_x
+        K[1, 1] /= self._binning_y
+        K[0, 2] = (K[0, 2] - x1) / self._binning_x
+        K[1, 2] = (K[1, 2] - y1) / self._binning_y
+        P[0, 0] /= self._binning_x
+        P[1, 1] /= self._binning_y
+        P[0, 2] = (P[0, 2] - x1) / self._binning_x
+        P[1, 2] = (P[1, 2] - y1) / self._binning_y
 
         height = y2 - y1
         width = x2 - x1
@@ -771,8 +776,16 @@ class PinholeCameraModel(object):
         #  resolution of the output image to
         #  (width / binning_x) x (height / binning_y).
         # The default values binning_x = binning_y = 0 is consider
-        binning_x = max(1, camera_info_msg.binning_x)
-        binning_y = max(1, camera_info_msg.binning_y)
+
+        if camera_info_msg.binning_x == 0:
+            binning_x = 1
+        else:
+            binning_x = camera_info_msg.binning_x
+
+        if camera_info_msg.binning_y == 0:
+            binning_y = 1
+        else:
+            binning_y = camera_info_msg.binning_y
 
         raw_roi = copy.copy(camera_info_msg.roi)
         # ROI all zeros is considered the same as full resolution
@@ -810,6 +823,44 @@ class PinholeCameraModel(object):
             full_P=full_P,
             full_height=image_height,
             full_width=image_width,
+            binning_x=binning_x,
+            binning_y=binning_y)
+
+    def crop_resize_camera_info(self, target_size, roi=None):
+        """Return cropped and resized region's camera model
+
+        Parameters
+        ----------
+        target_size : list[int]
+            [target_width, target_height] order.
+        roi : list[float]
+            [left_y, left_x, right_y, right_x] order, by default self.roi.
+
+        Returns
+        -------
+        cameramodel : cameramodels.PinholeCameraModel
+            camera model of cropped and resised region.
+        """
+
+        if len(target_size) != 2:
+            raise ValueError('target_size length should be 2')
+
+        roi = self.roi if roi is None else roi
+
+        binning_x = roi[3] / target_size[1]
+        binning_y = roi[2] / target_size[0]
+
+        return PinholeCameraModel(
+            self.height, self.width,
+            self.K, self.P, self.R, self.D,
+            roi,
+            self.tf_frame,
+            self.stamp,
+            distortion_model=self.distortion_model,
+            full_P=self.full_P,
+            full_K=self.full_K,
+            full_height=self._full_height,
+            full_width=self._full_width,
             binning_x=binning_x,
             binning_y=binning_y)
 
