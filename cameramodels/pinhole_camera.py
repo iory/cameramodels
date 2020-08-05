@@ -4,6 +4,7 @@ import copy
 import yaml
 
 import numpy as np
+import PIL
 from PIL import Image
 from PIL import ImageDraw
 
@@ -75,7 +76,8 @@ class PinholeCameraModel(object):
                  full_height=None,
                  full_width=None,
                  binning_x=1,
-                 binning_y=1):
+                 binning_y=1,
+                 target_size=None):
         self._width = image_width
         self._height = image_height
         self._full_width = full_width or self._width
@@ -97,11 +99,36 @@ class PinholeCameraModel(object):
             self._full_P = self.P.copy()
         self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
         self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
-        self.binning_x = binning_x
-        self.binning_y = binning_y
-        self.roi = roi or [0, 0, self._height, self._width]
+        self._binning_x = binning_x
+        self._binning_y = binning_y
+        self._roi = roi or [0, 0, self._height, self._width]
+        self._target_size = target_size
         self.tf_frame = tf_frame
         self.stamp = stamp
+
+        # finally calculate K and P considering ROI and binning.
+        self._adjust()
+
+    def _adjust(self):
+        """Adjust K and P for binning and ROI
+
+        """
+        y1, x1, y2, x2 = self.roi
+        K = self.full_K.copy()
+        P = self.full_P.copy()
+        # Adjust K and P for binning and ROI
+        K[0, 0] /= self._binning_x
+        K[1, 1] /= self._binning_y
+        K[0, 2] = (K[0, 2] - x1) / self._binning_x
+        K[1, 2] = (K[1, 2] - y1) / self._binning_y
+        P[0, 0] /= self._binning_x
+        P[1, 1] /= self._binning_y
+        P[0, 2] = (P[0, 2] - x1) / self._binning_x
+        P[1, 2] = (P[1, 2] - y1) / self._binning_y
+        self.K = K
+        self.P = P
+        self._width = x2 - x1
+        self._height = y2 - y1
 
     @property
     def width(self):
@@ -381,15 +408,25 @@ class PinholeCameraModel(object):
         return self._binning_x
 
     @binning_x.setter
-    def binning_x(self, decimation_x):
+    def binning_x(self, binning_x):
         """Setter of binning_x
+
+        Note that this setter internally changes target_size, K and P.
 
         Parameters
         -----------
-        decimation_x : int
+        binning_x : float
             decimation value.
         """
-        self._binning_x = decimation_x
+        if binning_x <= 0:
+            raise ValueError("binning should be greater than 0.")
+        self._binning_x = binning_x
+        roi_width = self.roi[3] - self.roi[1]
+        _, target_height = self._target_size
+        target_width = int(roi_width / binning_x)
+        self._binning_x = roi_width / target_width
+        self._target_size = (target_width, target_height)
+        self._adjust()
 
     @property
     def binning_y(self):
@@ -403,15 +440,57 @@ class PinholeCameraModel(object):
         return self._binning_y
 
     @binning_y.setter
-    def binning_y(self, decimation_y):
+    def binning_y(self, binning_y):
         """Setter of binning_y
+
+        Note that this setter internally changes target_size, K and P.
 
         Parameters
         -----------
-        decimation_y : int
+        binning_y : float
             decimation value.
         """
-        self._binning_y = decimation_y
+        if binning_y <= 0:
+            raise ValueError("binning should be greater than 0.")
+        self._binning_y = binning_y
+        roi_height = self.roi[2] - self.roi[0]
+        target_width, _ = self._target_size
+        target_height = int(roi_height / binning_y)
+        self._binning_y = roi_height / target_height
+        self._target_size = (target_width, target_height)
+        self._adjust()
+
+    @property
+    def target_size(self):
+        """Return target_size
+
+        Returns
+        -------
+        self._target_size : None or tuple(int)
+            (width, height).
+            If this value is `None`, target size is not specified.
+        """
+        return self._target_size
+
+    @target_size.setter
+    def target_size(self, target_size):
+        """Setter of target_size
+
+        This setter internally changes value of binning_x, binning_y, K and P.
+
+        Parameters
+        ----------
+        target_size : tuple(int)
+            (width, height)
+        """
+        if len(target_size) != 2:
+            raise ValueError('target_size length should be 2')
+        roi_height = self.roi[2] - self.roi[0]
+        roi_width = self.roi[3] - self.roi[1]
+        self._binning_x = roi_width / target_size[1]
+        self._binning_y = roi_height / target_size[0]
+        self._target_size = target_size
+        self._adjust()
 
     @property
     def roi(self):
@@ -433,26 +512,8 @@ class PinholeCameraModel(object):
         roi : list[float]
             [left_y, left_x, right_y, right_x] order.
         """
-        y1, x1, y2, x2 = roi
-        K = self.full_K.copy()
-        P = self.full_P.copy()
-        # Adjust K and P for binning and ROI
-        K[0, 0] /= self._binning_x
-        K[1, 1] /= self._binning_y
-        K[0, 2] = (K[0, 2] - x1) / self._binning_x
-        K[1, 2] = (K[1, 2] - y1) / self._binning_y
-        P[0, 0] /= self._binning_x
-        P[1, 1] /= self._binning_y
-        P[0, 2] = (P[0, 2] - x1) / self._binning_x
-        P[1, 2] = (P[1, 2] - y1) / self._binning_y
-
-        height = y2 - y1
-        width = x2 - x1
-        self.K = K
-        self.P = P
-        self._width = width
-        self._height = height
         self._roi = roi
+        self._adjust()
 
     @property
     def open3d_intrinsic(self):
@@ -803,15 +864,6 @@ class PinholeCameraModel(object):
 
         full_K = K.copy()
         full_P = P.copy()
-        # Adjust K and P for binning and ROI
-        K[0, 0] /= binning_x
-        K[1, 1] /= binning_y
-        K[0, 2] = (K[0, 2] - raw_roi.x_offset) / binning_x
-        K[1, 2] = (K[1, 2] - raw_roi.y_offset) / binning_y
-        P[0, 0] /= binning_x
-        P[1, 1] /= binning_y
-        P[0, 2] = (P[0, 2] - raw_roi.x_offset) / binning_x
-        P[1, 2] = (P[1, 2] - raw_roi.y_offset) / binning_y
         return PinholeCameraModel(
             raw_roi.height, raw_roi.width,
             K, P, R, D,
@@ -834,7 +886,7 @@ class PinholeCameraModel(object):
         target_size : list[int]
             [target_width, target_height] order.
         roi : list[float]
-            [left_y, left_x, right_y, right_x] order, by default self.roi.
+            [top, left, bottom, right] order, by default self.roi.
 
         Returns
         -------
@@ -847,8 +899,15 @@ class PinholeCameraModel(object):
 
         roi = self.roi if roi is None else roi
 
-        binning_x = (roi[3] - roi[1]) / target_size[1]
-        binning_y = (roi[2] - roi[0]) / target_size[0]
+        roi_height = roi[2] - roi[0]
+        roi_width = roi[3] - roi[1]
+        if roi_height <= 0 or roi_width <= 0:
+            raise ValueError(
+                "Invalid ROI, [left: {}, top: {}, right: {}, bottom: {}]".
+                format(roi[0], roi[1], roi[2], roi[3]))
+
+        binning_x = roi_width / target_size[0]
+        binning_y = roi_height / target_size[1]
 
         return PinholeCameraModel(
             self.height, self.width,
@@ -862,10 +921,13 @@ class PinholeCameraModel(object):
             full_height=self._full_height,
             full_width=self._full_width,
             binning_x=binning_x,
-            binning_y=binning_y)
+            binning_y=binning_y,
+            target_size=target_size)
 
     def crop_image(self, img, copy=False):
         """Crop input full resolution image considering roi.
+
+        Note that this function will not return resized image.
 
         Parameters
         ----------
@@ -894,6 +956,46 @@ class PinholeCameraModel(object):
             return img[y1:y2, x1:x2].copy()
         else:
             return img[y1:y2, x1:x2]
+
+    def crop_resize_image(self, img, interpolation=PIL.Image.BILINEAR):
+        """Crop and resize input full resolution image.
+
+        Parameters
+        ----------
+        img : numpy.ndarray
+            input image. (H, W, channel)
+        interpolation : int
+            interpolation method.
+            You can specify, PIL.Image.NEAREST, PIL.Image.BILINEAR,
+            PIL.Image.BICUBIC and PIL.Image.LANCZOS.
+
+        Returns
+        -------
+        out : numpy.ndarray
+            cropped and resized image.
+        """
+        y1, x1, y2, x2 = self.roi
+        if self._target_size is None:
+            raise ValueError('Target size is not specified')
+
+        out_shape = self._target_size
+        if img.ndim == 3:
+            H, W, C = img.shape
+            out_shape += (C, )
+        elif img.ndim == 2:
+            H, W = img.shape
+        else:
+            raise ValueError('Input image is not gray or rgb image.')
+        if H != self._full_height or W != self._full_width:
+            raise ValueError('Input image shape should be ({}, {})'
+                             ', given ({}, {})'.format(
+                                 self._full_width, self._full_height, W, H))
+
+        cropped_img = img[y1:y2, x1:x2]
+        out = np.empty(out_shape, dtype=img.dtype)
+        pil_img = Image.fromarray(cropped_img)
+        out[:] = pil_img.resize(self._target_size, resample=interpolation)
+        return out
 
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
