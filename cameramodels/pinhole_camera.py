@@ -760,6 +760,8 @@ class PinholeCameraModel(object):
         with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.FullLoader)
         roi = None
+        binning_x = 1
+        binning_y = 1
         if 'image_width' in data:
             # opencv format
             image_width = data['image_width']
@@ -786,6 +788,11 @@ class PinholeCameraModel(object):
         else:
             raise RuntimeError("Not supported YAML file.")
 
+        if 'binning_x' in data:
+            binning_x = 1 if data['binning_x'] == 0 else data['binning_x']
+        if 'binning_y' in data:
+            binning_y = 1 if data['binning_y'] == 0 else data['binning_y']
+
         # ROI all zeros is considered the same as full resolution
         if 'roi' in data:
             x_offset = data['roi']['x_offset']
@@ -807,7 +814,7 @@ class PinholeCameraModel(object):
             image_height, image_width,
             K, P, R, D, roi=roi,
             distortion_model=distortion_model,
-            name=name)
+            name=name, binning_x=binning_x, binning_y=binning_y)
 
     @staticmethod
     def from_camera_info(camera_info_msg):
@@ -1274,6 +1281,8 @@ class PinholeCameraModel(object):
                 "  cols: 4",
                 "  data: " + format_mat(
                     np.array(self.full_P.reshape(-1), dtype=np.float64), 5),
+                "binning_x: %f" % self._binning_x,
+                "binning_y: %f" % self._binning_y,
                 "roi:",
                 "  x_offset: %d" % self.roi[1],
                 "  y_offset: %d" % self.roi[0],
