@@ -487,8 +487,8 @@ class PinholeCameraModel(object):
             raise ValueError('target_size length should be 2')
         roi_height = self.roi[2] - self.roi[0]
         roi_width = self.roi[3] - self.roi[1]
-        self._binning_x = roi_width / target_size[1]
-        self._binning_y = roi_height / target_size[0]
+        self._binning_x = roi_width / target_size[0]
+        self._binning_y = roi_height / target_size[1]
         self._target_size = target_size
         self._adjust()
 
@@ -760,6 +760,8 @@ class PinholeCameraModel(object):
         with open(filename, 'r') as f:
             data = yaml.load(f, Loader=yaml.FullLoader)
         roi = None
+        binning_x = 1
+        binning_y = 1
         if 'image_width' in data:
             # opencv format
             image_width = data['image_width']
@@ -781,32 +783,38 @@ class PinholeCameraModel(object):
             P = data['P']
             R = data['R']
             D = data['D']
-
-            # ROI all zeros is considered the same as full resolution
-            if 'roi' in data:
-                x_offset = data['roi']['x_offset']
-                y_offset = data['roi']['y_offset']
-                roi_width = data['roi']['width']
-                roi_height = data['roi']['height']
-                if x_offset == 0 \
-                   and y_offset == 0 \
-                   and roi_width == 0 \
-                   and roi_height == 0:
-                    roi_width = image_width
-                    roi_height = image_height
-                roi = [y_offset,
-                       x_offset,
-                       y_offset + roi_height,
-                       x_offset + roi_width]
             distortion_model = data['distortion_model']
             name = ''
         else:
             raise RuntimeError("Not supported YAML file.")
+
+        if 'binning_x' in data:
+            binning_x = 1 if data['binning_x'] == 0 else data['binning_x']
+        if 'binning_y' in data:
+            binning_y = 1 if data['binning_y'] == 0 else data['binning_y']
+
+        # ROI all zeros is considered the same as full resolution
+        if 'roi' in data:
+            x_offset = data['roi']['x_offset']
+            y_offset = data['roi']['y_offset']
+            roi_width = data['roi']['width']
+            roi_height = data['roi']['height']
+            if x_offset == 0 \
+               and y_offset == 0 \
+               and roi_width == 0 \
+               and roi_height == 0:
+                roi_width = image_width
+                roi_height = image_height
+            roi = [y_offset,
+                   x_offset,
+                   y_offset + roi_height,
+                   x_offset + roi_width]
+
         return PinholeCameraModel(
             image_height, image_width,
             K, P, R, D, roi=roi,
             distortion_model=distortion_model,
-            name=name)
+            name=name, binning_x=binning_x, binning_y=binning_y)
 
     @staticmethod
     def from_camera_info(camera_info_msg):
@@ -1273,6 +1281,13 @@ class PinholeCameraModel(object):
                 "  cols: 4",
                 "  data: " + format_mat(
                     np.array(self.full_P.reshape(-1), dtype=np.float64), 5),
+                "binning_x: %f" % self._binning_x,
+                "binning_y: %f" % self._binning_y,
+                "roi:",
+                "  x_offset: %d" % self.roi[1],
+                "  y_offset: %d" % self.roi[0],
+                "  height: %d" % (self.roi[2] - self.roi[0]),
+                "  width: %d" % (self.roi[3] - self.roi[1]),
                 ""
             ])
         with open(str(output_filepath), 'w') as f:
