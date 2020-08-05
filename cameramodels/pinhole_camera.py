@@ -487,8 +487,8 @@ class PinholeCameraModel(object):
             raise ValueError('target_size length should be 2')
         roi_height = self.roi[2] - self.roi[0]
         roi_width = self.roi[3] - self.roi[1]
-        self._binning_x = roi_width / target_size[1]
-        self._binning_y = roi_height / target_size[0]
+        self._binning_x = roi_width / target_size[0]
+        self._binning_y = roi_height / target_size[1]
         self._target_size = target_size
         self._adjust()
 
