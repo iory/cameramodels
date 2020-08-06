@@ -1352,3 +1352,26 @@ class PinholeCameraModel(object):
             np_pil_img = np.array(pil_img, dtype=img.dtype)
             bgr_img[:] = np_pil_img[..., rgb_to_bgr_indices]
             return bgr_img
+
+    def points_in_roi(self, points):
+        """Check if input points are in roi.
+
+        Parameters
+        ----------
+        points : list[list[float, float]]
+            [[x_1, y_1], [x_2, y_2] ..., [x_n, y_n]].
+
+        Returns
+        -------
+        result list[bool]
+            True if the point is in roi, False otherwise.
+        """
+        result = []
+        for point in points:
+            if self.roi[1] <= point[0] <= self.roi[3] \
+               and self.roi[0] <= point[1] <= self.roi[2]:
+                result.append(True)
+            else:
+                result.append(False)
+
+        return result
