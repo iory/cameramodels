@@ -144,6 +144,19 @@ class TestPinholeCameraModel(unittest.TestCase):
         cm.draw_roi(alpha_img, copy=True)
         testing.assert_equal(alpha_img, alpha_img_org)
 
+    def test_points_roi(self):
+        cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
+        points = [[874.5, 680],
+                  [875, 680],
+                  [875, 679.5],
+                  [1072, 680],
+                  [1072.5, 680],
+                  [1072, 859],
+                  [1072, 869.5]]
+        testing.assert_equal(
+            cm.points_in_roi(points),
+            [False, True, False, True, False, True, False])
+
     def test__target_size(self):
         cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
         cm.target_size = (640, 480)
