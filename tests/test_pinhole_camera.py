@@ -36,10 +36,10 @@ class TestPinholeCameraModel(unittest.TestCase):
 
     def test_crop_image(self):
         cropped_cm = copy.deepcopy(self.cm)
-        cropped_cm.roi = [0, 0, 100, 100]
+        cropped_cm.roi = [0, 0, 100, 101]
         img = np.zeros((480, 640))
         ret_img = cropped_cm.crop_image(img)
-        testing.assert_equal(ret_img.shape, (100, 100))
+        testing.assert_equal(ret_img.shape, (100, 101))
 
         with self.assertRaises(ValueError):
             cropped_cm.crop_image(np.zeros(100))
@@ -51,14 +51,14 @@ class TestPinholeCameraModel(unittest.TestCase):
         cropped_cm = copy.deepcopy(self.cm)
         cropped_cm.roi = [0, 0, 100, 100]
         gray_img = np.zeros((480, 640), dtype=np.uint8)
-        cropped_cm.target_size = (256, 256)
+        cropped_cm.target_size = (256, 257)
         ret_img = cropped_cm.crop_resize_image(gray_img)
-        testing.assert_equal(ret_img.shape, (256, 256))
+        testing.assert_equal(ret_img.shape, (257, 256))
 
         bgr_img = np.zeros((480, 640, 3), dtype=np.uint8)
-        cropped_cm.target_size = (10, 10)
+        cropped_cm.target_size = (11, 10)
         ret_img = cropped_cm.crop_resize_image(bgr_img)
-        testing.assert_equal(ret_img.shape, (10, 10, 3))
+        testing.assert_equal(ret_img.shape, (10, 11, 3))
 
         with self.assertRaises(ValueError):
             cropped_cm.crop_resize_image(np.zeros(100))
@@ -66,6 +66,34 @@ class TestPinholeCameraModel(unittest.TestCase):
         with self.assertRaises(ValueError):
             cropped_cm.crop_resize_image(
                 np.zeros((100, 100), dtype=np.uint8))
+
+    def test_resize_bbox(self):
+        resized_cm = self.cm.crop_resize_camera_info(
+            target_size=[100, 200])
+        out_bbox = resized_cm.resize_bbox(
+            [[0, 0, self.cm.height, self.cm.width]])
+        testing.assert_almost_equal(
+            out_bbox, [[0, 0, 200, 100]], decimal=4)
+
+        out_bbox = resized_cm.resize_bbox(
+            [0, 0, self.cm.height, self.cm.width])
+        testing.assert_almost_equal(
+            out_bbox, [0, 0, 200, 100], decimal=4)
+
+    def test_resize_point(self):
+        resized_cm = self.cm.crop_resize_camera_info(
+            target_size=[100, 200])
+        out_point = resized_cm.resize_point(
+            [[0, 0],
+             [0, self.cm.height],
+             [self.cm.width, self.cm.height],
+             [self.cm.width, 0]])
+        testing.assert_almost_equal(
+            out_point,
+            [[0, 0],
+             [0, 200],
+             [100, 200],
+             [100, 0]], decimal=4)
 
     def test_calc_f_from_fov(self):
         f = PinholeCameraModel.calc_f_from_fov(90, 480)

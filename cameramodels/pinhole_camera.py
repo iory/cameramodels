@@ -986,12 +986,14 @@ class PinholeCameraModel(object):
         if self._target_size is None:
             raise ValueError('Target size is not specified')
 
-        out_shape = self._target_size
+        H, W = img.shape[:2]
+        out_W, out_H = self._target_size
+        out_shape = (out_H, out_W)
         if img.ndim == 3:
-            H, W, C = img.shape
-            out_shape += (C, )
+            _, _, C = img.shape
+            out_shape += (C,)
         elif img.ndim == 2:
-            H, W = img.shape
+            pass
         else:
             raise ValueError('Input image is not gray or rgb image.')
         if H != self._full_height or W != self._full_width:
@@ -1004,6 +1006,55 @@ class PinholeCameraModel(object):
         pil_img = Image.fromarray(cropped_img)
         out[:] = pil_img.resize(self._target_size, resample=interpolation)
         return out
+
+    def resize_bbox(self, bbox):
+        """Resize input full resolution bbox.
+
+        Parameters
+        ----------
+        bbox : numpy.ndarray or list[float]
+            input bbox. Input shape can be (4,) or (N, 4).
+            [top, left, bottom, right] order.
+
+        Returns
+        -------
+        out_bbox : numpy.ndarray
+            resized bbox.
+        """
+        bbox = np.array(bbox, 'f')
+        resize_scales = np.array([self._binning_y, self._binning_x,
+                                  self._binning_y, self._binning_x], 'f')
+        if bbox.ndim == 1:
+            out_bbox = bbox / resize_scales
+        elif bbox.ndim == 2:
+            out_bbox = bbox / resize_scales.reshape(1, 4)
+        else:
+            raise ValueError("Not valid bboxes")
+        return out_bbox
+
+    def resize_point(self, uv_point):
+        """Resize input full resolution uv point.
+
+        Parameters
+        ----------
+        uv_point : numpy.ndarray or list[float]
+            input point. Input shape can be (2,) or (N, 2).
+            [u, v] order.
+
+        Returns
+        -------
+        out_point : numpy.ndarray
+            resized point.
+        """
+        uv_point = np.array(uv_point, 'f')
+        resize_scales = np.array([self._binning_x, self._binning_y], 'f')
+        if uv_point.ndim == 1:
+            out_point = uv_point / resize_scales
+        elif uv_point.ndim == 2:
+            out_point = uv_point / resize_scales.reshape(1, 2)
+        else:
+            raise ValueError("Not valid points")
+        return out_point
 
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
