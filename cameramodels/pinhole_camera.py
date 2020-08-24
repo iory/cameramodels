@@ -1007,6 +1007,31 @@ class PinholeCameraModel(object):
         out[:] = pil_img.resize(self._target_size, resample=interpolation)
         return out
 
+    def resize_bbox(self, bbox):
+        """Resize input full resolution bbox.
+
+        Parameters
+        ----------
+        bbox : numpy.ndarray or list[float]
+            input bbox. Input shape can be (4,) or (N, 4).
+            [top, left, bottom, right] order.
+
+        Returns
+        -------
+        out_bbox : numpy.ndarray
+            resized bbox.
+        """
+        bbox = np.array(bbox, 'f')
+        resize_scales = np.array([self._binning_y, self._binning_x,
+                                  self._binning_y, self._binning_x], 'f')
+        if bbox.ndim == 1:
+            out_bbox = bbox / resize_scales
+        elif bbox.ndim == 2:
+            out_bbox = bbox / resize_scales.reshape(1, 4)
+        else:
+            raise ValueError("Not valid bboxes")
+        return out_bbox
+
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
 

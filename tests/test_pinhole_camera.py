@@ -67,6 +67,19 @@ class TestPinholeCameraModel(unittest.TestCase):
             cropped_cm.crop_resize_image(
                 np.zeros((100, 100), dtype=np.uint8))
 
+    def test_resize_bbox(self):
+        resized_cm = self.cm.crop_resize_camera_info(
+            target_size=[100, 200])
+        out_bbox = resized_cm.resize_bbox(
+            [[0, 0, self.cm.height, self.cm.width]])
+        testing.assert_almost_equal(
+            out_bbox, [[0, 0, 200, 100]], decimal=4)
+
+        out_bbox = resized_cm.resize_bbox(
+            [0, 0, self.cm.height, self.cm.width])
+        testing.assert_almost_equal(
+            out_bbox, [0, 0, 200, 100], decimal=4)
+
     def test_calc_f_from_fov(self):
         f = PinholeCameraModel.calc_f_from_fov(90, 480)
         testing.assert_almost_equal(
