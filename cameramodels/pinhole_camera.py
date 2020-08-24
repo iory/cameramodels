@@ -920,6 +920,8 @@ class PinholeCameraModel(object):
                 "Invalid ROI, [left: {}, top: {}, right: {}, bottom: {}]".
                 format(roi[0], roi[1], roi[2], roi[3]))
 
+        target_size = self._calc_resize_image_size_keeping_aspect_ratio(
+            target_size)
         binning_x = roi_width / target_size[0]
         binning_y = roi_height / target_size[1]
 
@@ -1445,3 +1447,32 @@ class PinholeCameraModel(object):
                 result.append(False)
 
         return result
+
+    def _calc_resize_image_size_keeping_aspect_ratio(
+            self, target_size):
+        """Calculate resized image size keeping aspect ratio.
+
+        Parameters
+        ----------
+        target_size : tuple(int or None)
+            values of (width, height).
+            If width or height is None,
+            calculate it from aspect ratio.
+
+        Returns
+        -------
+        resized_size : tuple(int)
+            resized target size.
+        """
+        width, height = target_size
+        if width is not None and height is not None:
+            return (width, height)
+        if width is None and height is None:
+            raise ValueError('Only width or height should be specified.')
+        if width:
+            height = width * self._full_height / self._full_width
+        else:
+            width = height * self._full_width / self._full_height
+        height = int(height)
+        width = int(width)
+        return (width, height)
