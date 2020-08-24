@@ -36,10 +36,10 @@ class TestPinholeCameraModel(unittest.TestCase):
 
     def test_crop_image(self):
         cropped_cm = copy.deepcopy(self.cm)
-        cropped_cm.roi = [0, 0, 100, 100]
+        cropped_cm.roi = [0, 0, 100, 101]
         img = np.zeros((480, 640))
         ret_img = cropped_cm.crop_image(img)
-        testing.assert_equal(ret_img.shape, (100, 100))
+        testing.assert_equal(ret_img.shape, (100, 101))
 
         with self.assertRaises(ValueError):
             cropped_cm.crop_image(np.zeros(100))
@@ -51,14 +51,14 @@ class TestPinholeCameraModel(unittest.TestCase):
         cropped_cm = copy.deepcopy(self.cm)
         cropped_cm.roi = [0, 0, 100, 100]
         gray_img = np.zeros((480, 640), dtype=np.uint8)
-        cropped_cm.target_size = (256, 256)
+        cropped_cm.target_size = (256, 257)
         ret_img = cropped_cm.crop_resize_image(gray_img)
-        testing.assert_equal(ret_img.shape, (256, 256))
+        testing.assert_equal(ret_img.shape, (257, 256))
 
         bgr_img = np.zeros((480, 640, 3), dtype=np.uint8)
-        cropped_cm.target_size = (10, 10)
+        cropped_cm.target_size = (11, 10)
         ret_img = cropped_cm.crop_resize_image(bgr_img)
-        testing.assert_equal(ret_img.shape, (10, 10, 3))
+        testing.assert_equal(ret_img.shape, (10, 11, 3))
 
         with self.assertRaises(ValueError):
             cropped_cm.crop_resize_image(np.zeros(100))

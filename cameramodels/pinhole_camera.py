@@ -986,12 +986,14 @@ class PinholeCameraModel(object):
         if self._target_size is None:
             raise ValueError('Target size is not specified')
 
-        out_shape = self._target_size
+        H, W = img.shape[:2]
+        out_W, out_H = self._target_size
+        out_shape = (out_H, out_W)
         if img.ndim == 3:
-            H, W, C = img.shape
-            out_shape += (C, )
+            _, _, C = img.shape
+            out_shape += (C,)
         elif img.ndim == 2:
-            H, W = img.shape
+            pass
         else:
             raise ValueError('Input image is not gray or rgb image.')
         if H != self._full_height or W != self._full_width:
