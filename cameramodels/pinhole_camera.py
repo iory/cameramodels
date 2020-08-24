@@ -1032,6 +1032,30 @@ class PinholeCameraModel(object):
             raise ValueError("Not valid bboxes")
         return out_bbox
 
+    def resize_point(self, uv_point):
+        """Resize input full resolution uv point.
+
+        Parameters
+        ----------
+        uv_point : numpy.ndarray or list[float]
+            input point. Input shape can be (2,) or (N, 2).
+            [u, v] order.
+
+        Returns
+        -------
+        out_point : numpy.ndarray
+            resized point.
+        """
+        uv_point = np.array(uv_point, 'f')
+        resize_scales = np.array([self._binning_x, self._binning_y], 'f')
+        if uv_point.ndim == 1:
+            out_point = uv_point / resize_scales
+        elif uv_point.ndim == 2:
+            out_point = uv_point / resize_scales.reshape(1, 2)
+        else:
+            raise ValueError("Not valid points")
+        return out_point
+
     def project_pixel_to_3d_ray(self, uv, normalize=False):
         """Returns the ray vector
 
