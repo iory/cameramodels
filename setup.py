@@ -79,6 +79,8 @@ setup(
     setup_requires=setup_requires,
     install_requires=install_requires,
     extras_require={
-        'all': ['open3d'],
+        'all': [
+            'open3d',
+        ],
     },
 )

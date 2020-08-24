@@ -48,24 +48,29 @@ class TestPinholeCameraModel(unittest.TestCase):
             cropped_cm.crop_image(np.zeros((100, 100)))
 
     def test_crop_resize_image(self):
-        cropped_cm = copy.deepcopy(self.cm)
-        cropped_cm.roi = [0, 0, 100, 100]
-        gray_img = np.zeros((480, 640), dtype=np.uint8)
-        cropped_cm.target_size = (256, 257)
-        ret_img = cropped_cm.crop_resize_image(gray_img)
-        testing.assert_equal(ret_img.shape, (257, 256))
+        for use_cv2 in [False, True]:
+            cropped_cm = copy.deepcopy(self.cm)
+            cropped_cm.roi = [0, 0, 100, 100]
+            gray_img = np.zeros((480, 640), dtype=np.uint8)
+            cropped_cm.target_size = (256, 257)
+            ret_img = cropped_cm.crop_resize_image(gray_img,
+                                                   use_cv2=use_cv2)
+            testing.assert_equal(ret_img.shape, (257, 256))
 
-        bgr_img = np.zeros((480, 640, 3), dtype=np.uint8)
-        cropped_cm.target_size = (11, 10)
-        ret_img = cropped_cm.crop_resize_image(bgr_img)
-        testing.assert_equal(ret_img.shape, (10, 11, 3))
+            bgr_img = np.zeros((480, 640, 3), dtype=np.uint8)
+            cropped_cm.target_size = (11, 10)
+            ret_img = cropped_cm.crop_resize_image(bgr_img,
+                                                   use_cv2=use_cv2)
+            testing.assert_equal(ret_img.shape, (10, 11, 3))
 
-        with self.assertRaises(ValueError):
-            cropped_cm.crop_resize_image(np.zeros(100))
+            with self.assertRaises(ValueError):
+                cropped_cm.crop_resize_image(np.zeros(100),
+                                             use_cv2=use_cv2)
 
-        with self.assertRaises(ValueError):
-            cropped_cm.crop_resize_image(
-                np.zeros((100, 100), dtype=np.uint8))
+            with self.assertRaises(ValueError):
+                cropped_cm.crop_resize_image(
+                    np.zeros((100, 100), dtype=np.uint8),
+                    use_cv2=use_cv2)
 
     def test_resize_bbox(self):
         resized_cm = self.cm.crop_resize_camera_info(
