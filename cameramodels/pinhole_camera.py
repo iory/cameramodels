@@ -1,6 +1,7 @@
 from __future__ import division
 
 import copy
+import warnings
 import yaml
 
 import numpy as np
@@ -20,6 +21,29 @@ def format_mat(x, precision):
         np.array2string(x, precision=precision,
                         suppress_small=True, separator=", ")
             .replace("[", "").replace("]", "").replace("\n", "\n        ")))
+
+
+def get_valid_roi(height, width, roi):
+    y1, x1, y2, x2 = roi
+    y1 = max(0, y1)
+    x1 = max(0, x1)
+    y2 = min(height, y2)
+    x2 = min(width, x2)
+    roi_height = y2 - y1
+    roi_width = x2 - x1
+
+    # ROI with non-positive height or width is
+    # considered the same as full resolution.
+    if x1 == 0 and y1 == 0 \
+       and roi_width == 0 and roi_height == 0:
+        return [0, 0, height, width]
+    elif roi_width <= 0 or roi_height <= 0:
+        warnings.warn(
+            "Invalid ROI, [left: {}, top: {}, right: {}, bottom: {}]".format(
+                roi[0], roi[1], roi[2], roi[3]))
+        return [0, 0, height, width]
+    else:
+        return [y1, x1, y2, x2]
 
 
 class PinholeCameraModel(object):
@@ -88,7 +112,6 @@ class PinholeCameraModel(object):
         self._height = image_height
         self._full_width = full_width or self._width
         self._full_height = full_height or self._height
-        self._aspect = 1.0 * self.width / self.height
         self.K = K
         self.D = D
         self.R = R
@@ -103,8 +126,6 @@ class PinholeCameraModel(object):
             self._full_P = full_P
         else:
             self._full_P = self.P.copy()
-        self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
-        self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
         self._binning_x = binning_x
         self._binning_y = binning_y
         self._roi = roi or [0, 0, self._height, self._width]
@@ -135,6 +156,9 @@ class PinholeCameraModel(object):
         self.P = P
         self._width = x2 - x1
         self._height = y2 - y1
+        self._aspect = 1.0 * self.width / self.height
+        self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
+        self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
 
     @property
     def width(self):
@@ -518,7 +542,7 @@ class PinholeCameraModel(object):
         roi : list[float]
             [left_y, left_x, right_y, right_x] order.
         """
-        self._roi = roi
+        self._roi = get_valid_roi(self._full_height, self._full_width, roi)
         self._adjust()
 
     @property
@@ -772,10 +796,19 @@ class PinholeCameraModel(object):
             # opencv format
             image_width = data['image_width']
             image_height = data['image_height']
-            K = data['camera_matrix']['data']
-            P = data['projection_matrix']['data']
-            R = data['rectification_matrix']['data']
-            D = data['distortion_coefficients']['data']
+            K = np.array(
+                data['camera_matrix']['data'],
+                dtype=np.float32).reshape(3, 3)
+            P = np.array(
+                data['projection_matrix']['data'],
+                dtype=np.float32).reshape(3, 4)
+            R = np.array(
+                data['rectification_matrix']['data'],
+                dtype=np.float32).reshape(3, 3)
+            D = np.array(
+                data['distortion_coefficients']['data'],
+                dtype=np.float32)
+
             distortion_model = 'plumb_bob'
             if 'camera_name' in data:
                 name = data['camera_name']
@@ -785,10 +818,18 @@ class PinholeCameraModel(object):
             # ROS yaml format
             image_width = data['width']
             image_height = data['height']
-            K = data['K']
-            P = data['P']
-            R = data['R']
-            D = data['D']
+            K = np.array(
+                data['K'],
+                dtype=np.float32).reshape(3, 3)
+            P = np.array(
+                data['P'],
+                dtype=np.float32).reshape(3, 4)
+            R = np.array(
+                data['R'],
+                dtype=np.float32).reshape(3, 3)
+            D = np.array(
+                data['D'],
+                dtype=np.float32)
             distortion_model = data['distortion_model']
             name = ''
         else:
@@ -799,28 +840,36 @@ class PinholeCameraModel(object):
         if 'binning_y' in data:
             binning_y = 1 if data['binning_y'] == 0 else data['binning_y']
 
-        # ROI all zeros is considered the same as full resolution
+        roi_width = image_width
+        roi_height = image_height
         if 'roi' in data:
             x_offset = data['roi']['x_offset']
             y_offset = data['roi']['y_offset']
             roi_width = data['roi']['width']
             roi_height = data['roi']['height']
-            if x_offset == 0 \
-               and y_offset == 0 \
-               and roi_width == 0 \
-               and roi_height == 0:
-                roi_width = image_width
-                roi_height = image_height
-            roi = [y_offset,
-                   x_offset,
-                   y_offset + roi_height,
-                   x_offset + roi_width]
+            roi = get_valid_roi(
+                image_height, image_width,
+                [y_offset,
+                 x_offset,
+                 y_offset + roi_height,
+                 x_offset + roi_width])
+            roi_width = roi[3] - roi[1]
+            roi_height = roi[2] - roi[0]
 
+        full_K = K.copy()
+        full_P = P.copy()
         return PinholeCameraModel(
-            image_height, image_width,
-            K, P, R, D, roi=roi,
+            roi_height, roi_width,
+            K, P, R, D,
+            roi=roi,
             distortion_model=distortion_model,
-            name=name, binning_x=binning_x, binning_y=binning_y)
+            name=name,
+            full_K=full_K,
+            full_P=full_P,
+            full_width=image_width,
+            full_height=image_height,
+            binning_x=binning_x,
+            binning_y=binning_y)
 
     @staticmethod
     def from_camera_info(camera_info_msg):
@@ -863,23 +912,22 @@ class PinholeCameraModel(object):
             binning_y = camera_info_msg.binning_y
 
         raw_roi = copy.copy(camera_info_msg.roi)
-        # ROI all zeros is considered the same as full resolution
-        if (raw_roi.x_offset == 0 and raw_roi.y_offset == 0 and
-                raw_roi.width == 0 and raw_roi.height == 0):
-            raw_roi.width = image_width
-            raw_roi.height = image_height
+        roi = get_valid_roi(
+            image_height, image_width,
+            [raw_roi.y_offset,
+             raw_roi.x_offset,
+             raw_roi.y_offset + raw_roi.height,
+             raw_roi.x_offset + raw_roi.width])
+        roi_width = roi[3] - roi[1]
+        roi_height = roi[2] - roi[0]
 
-        roi = [raw_roi.y_offset,
-               raw_roi.x_offset,
-               raw_roi.y_offset + raw_roi.height,
-               raw_roi.x_offset + raw_roi.width]
         tf_frame = camera_info_msg.header.frame_id
         stamp = camera_info_msg.header.stamp
 
         full_K = K.copy()
         full_P = P.copy()
         return PinholeCameraModel(
-            raw_roi.height, raw_roi.width,
+            roi_height, roi_width,
             K, P, R, D,
             roi,
             tf_frame,
