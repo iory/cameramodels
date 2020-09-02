@@ -811,7 +811,7 @@ class PinholeCameraModel(object):
 
             distortion_model = 'plumb_bob'
             if 'camera_name' in data:
-                name = data['camera_name']
+                name = data['camera_name'] or ''
             else:
                 name = ''
         elif 'width' in data:
