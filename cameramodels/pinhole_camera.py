@@ -68,7 +68,7 @@ class PinholeCameraModel(object):
     D : numpy.ndarray
         distortion.
     roi : None or list[float]
-        [left_y, left_x, right_y, right_x] order.
+        [top, left, bottom, right] order.
     tf_frame : None or str
         tf frame. This is for ROS compatibility.
     stamp : None
@@ -529,7 +529,7 @@ class PinholeCameraModel(object):
         Returns
         -------
         self._roi : None or list[float]
-            [left_y, left_x, right_y, right_x] order.
+            [top, left, bottom, right] order.
         """
         return self._roi
 
@@ -540,7 +540,7 @@ class PinholeCameraModel(object):
         Parameters
         ----------
         roi : list[float]
-            [left_y, left_x, right_y, right_x] order.
+            [top, left, bottom, right] order.
         """
         self._roi = get_valid_roi(self._full_height, self._full_width, roi)
         self._adjust()
