@@ -192,8 +192,18 @@ class TestPinholeCameraModel(unittest.TestCase):
 
     def test__target_size(self):
         cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
+        org_roi = copy.deepcopy(cm.roi)
         cm.target_size = (640, 480)
         self.assertEqual(cm.target_size, (640, 480))
+
+        resize_K = cm.K.copy()
+        resize_P = cm.P.copy()
+
+        cm.roi = [0, 0, 100, 100]
+        cm.target_size = (640, 480)
+        cm.roi = org_roi
+        testing.assert_equal(resize_K, cm.K)
+        testing.assert_equal(resize_P, cm.P)
 
     def test__binning_x(self):
         cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
