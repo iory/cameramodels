@@ -16,6 +16,40 @@ except ImportError:
     _cv2_available = False
 
 
+def pil_to_cv2_interpolation(interpolation):
+    if isinstance(interpolation, str):
+        interpolation = interpolation.lower()
+        if interpolation == 'nearest':
+            cv_interpolation = cv2.INTER_NEAREST
+        elif interpolation == 'bilinear':
+            cv_interpolation = cv2.INTER_LINEAR
+        elif interpolation == 'bicubic':
+            cv_interpolation = cv2.INTER_CUBIC
+        elif interpolation == 'lanczos':
+            cv_interpolation = cv2.INTER_LANCZOS4
+        else:
+            raise ValueError(
+                'Not valid Interpolation. '
+                'Valid interpolation methods are '
+                'nearest, bilinear, bicubic and lanczos.')
+    else:
+        if interpolation == PIL.Image.NEAREST:
+            cv_interpolation = cv2.INTER_NEAREST
+        elif interpolation == PIL.Image.BILINEAR:
+            cv_interpolation = cv2.INTER_LINEAR
+        elif interpolation == PIL.Image.BICUBIC:
+            cv_interpolation = cv2.INTER_CUBIC
+        elif interpolation == PIL.Image.LANCZOS:
+            cv_interpolation = cv2.INTER_LANCZOS4
+        else:
+            raise ValueError(
+                'Not valid Interpolation. '
+                'Valid interpolation methods are '
+                'PIL.Image.NEAREST, PIL.Image.BILINEAR, '
+                'PIL.Image.BICUBIC and PIL.Image.LANCZOS.')
+    return cv_interpolation
+
+
 def format_mat(x, precision):
     return ("[%s]" % (
         np.array2string(x, precision=precision,
@@ -1061,14 +1095,7 @@ class PinholeCameraModel(object):
         cropped_img = img[y1:y2, x1:x2]
         out = np.empty(out_shape, dtype=img.dtype)
         if use_cv2 and _cv2_available:
-            if interpolation == PIL.Image.NEAREST:
-                cv_interpolation = cv2.INTER_NEAREST
-            elif interpolation == PIL.Image.BILINEAR:
-                cv_interpolation = cv2.INTER_LINEAR
-            elif interpolation == PIL.Image.BICUBIC:
-                cv_interpolation = cv2.INTER_CUBIC
-            elif interpolation == PIL.Image.LANCZOS:
-                cv_interpolation = cv2.INTER_LANCZOS4
+            cv_interpolation = pil_to_cv2_interpolation(interpolation)
             out[:] = cv2.resize(cropped_img, self._target_size,
                                 interpolation=cv_interpolation)
         else:
