@@ -10,3 +10,5 @@ from cameramodels.pinhole_camera import PinholeCameraModel
 
 import cameramodels.data
 import cameramodels.models
+
+from cameramodels.align import align_depth_to_rgb

@@ -10,7 +10,7 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-version = '0.2.0'
+version = '0.2.1'
 
 
 if sys.argv[-1] == 'release':
@@ -81,6 +81,8 @@ setup(
     extras_require={
         'all': [
             'open3d',
+            'opencv-python;python_version>"2.7"',
+            'opencv-python<=4.2.0.32;python_version<="2.7"',
         ],
     },
 )
