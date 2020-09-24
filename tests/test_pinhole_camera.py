@@ -23,6 +23,11 @@ class TestPinholeCameraModel(unittest.TestCase):
     def setUpClass(cls):
         cls.cm = PinholeCameraModel.from_fovy(45, 480, 640)
 
+    def test_rectify_image(self):
+        cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
+        img = kinect_v2_image()
+        cm.rectify_image(img)
+
     def test_crop_resize_camra_info(self):
         cropped_resized_cm = self.cm.crop_resize_camera_info(
             target_size=[100, 200], roi=[0, 0, 100, 150])

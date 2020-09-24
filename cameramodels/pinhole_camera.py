@@ -974,6 +974,38 @@ class PinholeCameraModel(object):
             binning_x=binning_x,
             binning_y=binning_y)
 
+    def rectify_image(self, raw_img,
+                      interpolation=PIL.Image.BILINEAR):
+        """Rectify input raw image.
+
+        Parameters
+        ----------
+        raw_img : numpy.ndarray
+            raw image.
+        interpolation : int
+            interpolation method.
+            You can specify, PIL.Image.NEAREST, PIL.Image.BILINEAR,
+            PIL.Image.BICUBIC and PIL.Image.LANCZOS.
+
+        Returns
+        -------
+        rectified_img : numpy.ndarray
+            rectified image.
+        """
+        if _cv2_available is False:
+            raise RuntimeError('CV2 are not enabled. Currently '
+                               'only support cv2 rectification.')
+        mapx = np.ndarray(shape=(self.height, self.width, 1),
+                          dtype='float32')
+        mapy = np.ndarray(shape=(self.height, self.width, 1),
+                          dtype='float32')
+        cv2.initUndistortRectifyMap(
+            self.K, self.D, self.R, self.P,
+            (self.width, self.height),
+            cv2.CV_32FC1, mapx, mapy)
+        cv_interpolation = pil_to_cv2_interpolation(interpolation)
+        return cv2.remap(raw_img, mapx, mapy, cv_interpolation)
+
     def crop_resize_camera_info(self, target_size, roi=None):
         """Return cropped and resized region's camera model
 
