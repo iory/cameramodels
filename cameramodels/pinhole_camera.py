@@ -178,6 +178,9 @@ class PinholeCameraModel(object):
         K = self.full_K.copy()
         P = self.full_P.copy()
         # Adjust K and P for binning and ROI
+        if self._target_size is not None:
+            self._binning_x = (x2 - x1) / self._target_size[0]
+            self._binning_y = (y2 - y1) / self._target_size[1]
         K[0, 0] /= self._binning_x
         K[1, 1] /= self._binning_y
         K[0, 2] = (K[0, 2] - x1) / self._binning_x
