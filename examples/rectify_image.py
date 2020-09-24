@@ -1,4 +1,5 @@
 import argparse
+import os.path as osp
 
 import cameramodels
 import cv2
@@ -7,6 +8,8 @@ import open3d
 
 from cameramodels.align import align_depth_to_rgb
 
+
+current_dir = osp.dirname(osp.abspath(__file__))
 
 rotation_matrix = np.array(
     [[1, 0, 0, 0],
@@ -24,15 +27,16 @@ def main():
     args = parser.parse_args()
 
     depth_to_rgb_transform = np.load(
-        './data/depth_to_rgb_transformation.npy')
+        osp.join(current_dir, 'data/depth_to_rgb_transformation.npy'))
 
     depth_cameramodel = cameramodels.PinholeCameraModel.from_yaml_file(
-        './data/k4a_depth_camera_info.yaml')
+        osp.join(current_dir, 'data/k4a_depth_camera_info.yaml'))
     bgr_cameramodel = cameramodels.PinholeCameraModel.from_yaml_file(
-        './data/k4a_rgb_camera_info.yaml')
-    depth_img = cv2.imread('./data/k4a_depth_image_raw.png',
-                           cv2.IMREAD_ANYDEPTH)
-    bgr_img = cv2.imread('./data/k4a_rgb_image_raw.jpg')
+        osp.join(current_dir, 'data/k4a_rgb_camera_info.yaml'))
+    depth_img = cv2.imread(
+        osp.join(current_dir, 'data/k4a_depth_image_raw.png'),
+        cv2.IMREAD_ANYDEPTH)
+    bgr_img = cv2.imread(osp.join(current_dir, 'data/k4a_rgb_image_raw.jpg'))
 
     if args.no_depth_rect is False:
         depth_img = depth_cameramodel.rectify_image(
