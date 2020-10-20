@@ -1009,6 +1009,36 @@ class PinholeCameraModel(object):
         cv_interpolation = pil_to_cv2_interpolation(interpolation)
         return cv2.remap(raw_img, mapx, mapy, cv_interpolation)
 
+    def rectify_point(self, uv_raw):
+        """Rectify input raw points.
+
+        Parameters
+        ----------
+        uv_raw : numpy.ndarray or tuple[float] or list[float]
+            raw uv points.
+
+        Returns
+        -------
+        rectified_uv : numpy.ndarray
+            rectified point.
+        """
+        if _cv2_available is False:
+            raise RuntimeError('CV2 are not enabled. Currently '
+                               'only support cv2 rectification.')
+        src_point = np.array(uv_raw, 'f')
+        ndim = src_point.ndim
+        if ndim == 2:
+            n_points = src_point.shape[0]
+        else:
+            n_points = 1
+        src_point = src_point.reshape(n_points, 1, 2)
+        dst = cv2.undistortPoints(src_point, self.K, self.D,
+                                  R=self.R, P=self.P)
+        if ndim == 1:
+            return dst[0, 0]
+        else:
+            return dst.reshape(-1, 2)
+
     def crop_resize_camera_info(self, target_size, roi=None):
         """Return cropped and resized region's camera model
 
