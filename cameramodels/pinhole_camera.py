@@ -1400,6 +1400,51 @@ class PinholeCameraModel(object):
             translation.reshape(3, 1), (1, view_frust_pts.shape[1]))
         return view_frust_pts.T
 
+    def contained_point_inside_viewing_frustum(
+            self, point, radius=0.0,
+            near_plane=None, far_plane=None):
+        """Return contained or not inside a viewing frustum
+
+        Parameteres
+        -----------
+        point : numpy.ndarray or tuple[float] or list[float]
+            input (x, y, z) point. Available shapes are (3, ) and (N, 3).
+        """
+        src_point = np.array(point, 'f')
+        ndim = src_point.ndim
+        if ndim == 2:
+            points = src_point
+        else:
+            points = src_point[None, :]
+
+        theta_x = np.deg2rad(self._fovx / 2.0)
+        theta_y = np.deg2rad(self._fovy / 2.0)
+        # ax + by + cz + d = 0
+        # planes = np.array([[np.cos(theta_x), 0, np.sin(theta_x), 0],
+        #                    [- np.cos(theta_x), 0, np.sin(theta_x), 0],
+        #                    [0, np.cos(theta_y), np.sin(theta_y), 0],
+        #                    [0, - np.co(theta_y), np.sin(theta_y), 0],
+        #                    ], 'f')
+        planes = np.array([[1, 0, np.tan(theta_x), 0],
+                           [- 1, 0, np.tan(theta_x), 0],
+                           [0, 1, np.tan(theta_y), 0],
+                           [0, - 1, np.tan(theta_y), 0],
+                           ], 'f')
+        if near_plane is not None:
+            # z = -d
+            planes = np.vstack([planes,
+                                np.array([0, 0, 1, - near_plane], 'f')])
+        if far_plane is not None:
+            # z = d
+            planes = np.vstack([planes,
+                                np.array([0, 0, -1, far_plane], 'f')])
+        dists = np.sum(planes[None, :, :3] * points[:, None, :], -1) \
+            + planes[:, 3]
+        if ndim == 1:
+            return (~np.any(dists < - radius, -1))[0]
+        else:
+            return ~np.any(dists < - radius, -1)
+
     def flatten_uv(self, uv, dtype=np.int64):
         """Flattens uv coordinates to single dimensional tensor.
 
