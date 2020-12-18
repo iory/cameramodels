@@ -1,0 +1,96 @@
+name: Release cameramodels
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  formatting:
+    name: Check Formatting
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: 3.8
+    - name: Install Formatting
+      run: |
+        python -m pip install --upgrade pip
+        pip install hacking
+    - name: Check Formatting
+      run: |
+        flake8 .
+        grep -rlIP '[^\x00-\x7F]' cameramodels | grep '\.pyx\?' | sort > unicode.out; grep -rlI '# -\*- coding: \(utf-8\|latin-1\) -\*-' cameramodels | grep '\.pyx\?' | sort > coding.out; comm -23 unicode.out coding.out > test_code.out; cat test_code.out;  test \! -s test_code.out
+
+  tests:
+    name: Run Unit Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        python-version: [2.7, 3.6]
+        os: [ubuntu-latest]
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v1
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install APT On Linux
+      run: |
+        sudo apt-get update -qq -y
+        sudo apt-get install -qq -y libstdc++6
+    - name: Install Pytest
+      run: |
+        python -m pip install --upgrade pip setuptools wheel
+        pip install pytest hacking
+    - name: Install cameramodels
+      run: pip install .[all]
+    - name: Run Pytest
+      run: pytest -v tests
+
+  pypi:
+    name: Release To PyPi
+    needs: [tests, formatting]
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Set up Python
+      uses: actions/setup-python@v1
+      with:
+        python-version: '3.x'
+    - name: Install publishing dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install setuptools wheel twine
+    - name: Build and publish
+      env:
+        TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
+        TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+      run: |
+        python setup.py sdist bdist_wheel
+        twine upload dist/*
+
+  release:
+    name: Create GitHub Release
+    needs: [tests, formatting]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@master
+      - name: Tag Version
+        id: set_tag
+        run: |
+          export VER=$(python -c "import cameramodels; print(cameramodels.__version__)")
+          echo "::set-output name=tag_name::${VER}"
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.set_tag.outputs.tag_name }}
+          release_name: Release ${{ steps.set_tag.outputs.tag_name }}
+          draft: false
+          prerelease: false
