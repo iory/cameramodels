@@ -1,6 +1,6 @@
 # Camera Models
 
-[![Build Status](https://travis-ci.com/iory/cameramodels.svg?branch=master)](https://travis-ci.com/iory/cameramodels)
+[![Build Status](https://github.com/iory/cameramodels/workflows/Run%20Tests/badge.svg?branch=master)](https://github.com/iory/cameramodels/actions)
 
 <h4>
     <a href="https://cameramodels.readthedocs.io/en/latest/">Documentation</a> |
