@@ -1,13 +1,12 @@
 import argparse
 import os.path as osp
 
-import cameramodels
 import cv2
 import numpy as np
 import open3d
 
+import cameramodels
 from cameramodels.align import align_depth_to_rgb
-
 
 current_dir = osp.dirname(osp.abspath(__file__))
 

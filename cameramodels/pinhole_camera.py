@@ -2,12 +2,12 @@ from __future__ import division
 
 import copy
 import warnings
-import yaml
 
 import numpy as np
 import PIL
 from PIL import Image
 from PIL import ImageDraw
+import yaml
 
 try:
     import cv2
