@@ -10,6 +10,7 @@ from cameramodels.data import kinect_v2_camera_info
 from cameramodels.data import kinect_v2_image
 from cameramodels import PinholeCameraModel
 
+
 data_dir = osp.join(osp.abspath(osp.dirname(__file__)), 'data')
 camera_info_path = osp.join(data_dir, 'camera_info.yaml')
 ros_camera_info_path = osp.join(data_dir, 'ros_camera_info.yaml')
