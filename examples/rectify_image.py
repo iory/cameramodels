@@ -8,6 +8,7 @@ import open3d
 import cameramodels
 from cameramodels.align import align_depth_to_rgb
 
+
 current_dir = osp.dirname(osp.abspath(__file__))
 
 rotation_matrix = np.array(

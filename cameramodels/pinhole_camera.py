@@ -9,6 +9,7 @@ from PIL import Image
 from PIL import ImageDraw
 import yaml
 
+
 try:
     import cv2
     _cv2_available = True

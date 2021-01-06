@@ -19,9 +19,11 @@ import sys
 import pkg_resources
 import sphinx_rtd_theme
 
+
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 import _docstring_check  # NOQA
+
 
 __version__ = pkg_resources.get_distribution('cameramodels').version
 on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
