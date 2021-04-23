@@ -143,8 +143,8 @@ class PinholeCameraModel(object):
                  binning_x=1,
                  binning_y=1,
                  target_size=None):
-        self._width = image_width
-        self._height = image_height
+        self._width = int(image_width)
+        self._height = int(image_height)
         self._full_width = full_width or self._width
         self._full_height = full_height or self._height
         self.K = K
