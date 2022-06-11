@@ -6,6 +6,7 @@ import numpy as np
 from numpy import testing
 from PIL import Image
 
+import cameramodels
 from cameramodels.data import kinect_v2_camera_info
 from cameramodels.data import kinect_v2_image
 from cameramodels import PinholeCameraModel
@@ -264,3 +265,10 @@ class TestPinholeCameraModel(unittest.TestCase):
         cm.roi = org_roi
         testing.assert_almost_equal(org_K, cm.K)
         testing.assert_almost_equal(org_P, cm.P)
+
+    def test_in_view_frustum(self):
+        cm = cameramodels.models.D415()
+        testing.assert_equal(cm.in_view_frustum([0, 0, 0.1]), True)
+        testing.assert_equal(cm.in_view_frustum([0, 0, 1]), True)
+        testing.assert_equal(cm.in_view_frustum([100, 100, 0]), False)
+        testing.assert_equal(cm.in_view_frustum([5, 5, 0]), False)
