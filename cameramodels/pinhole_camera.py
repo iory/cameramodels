@@ -1382,8 +1382,8 @@ class PinholeCameraModel(object):
         array([[ 0.        ,  0.        ,  0.        ],
                [-0.41421356, -0.41421356,  1.        ],
                [-0.41421356,  0.41421356,  1.        ],
-               [ 0.41421356, -0.41421356,  1.        ],
-               [ 0.41421356,  0.41421356,  1.        ]])
+               [ 0.41421356,  0.41421356,  1.        ],
+               [ 0.41421356, -0.41421356,  1.        ]])
         """
         height = self.height
         width = self.width
@@ -1394,7 +1394,7 @@ class PinholeCameraModel(object):
         view_frust_pts = np.array(
             [(np.array([0, 0, 0, width, width]) - cx) *
              np.array([0, max_depth, max_depth, max_depth, max_depth]) / fx,
-             (np.array([0, 0, height, 0, height]) - cy) *
+             (np.array([0, 0, height, height, 0]) - cy) *
              np.array([0, max_depth, max_depth, max_depth, max_depth]) / fy,
              np.array([0, max_depth, max_depth, max_depth, max_depth])])
         view_frust_pts = np.dot(rotation, view_frust_pts) + np.tile(
