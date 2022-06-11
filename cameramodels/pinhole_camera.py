@@ -1382,8 +1382,8 @@ class PinholeCameraModel(object):
         array([[ 0.        ,  0.        ,  0.        ],
                [-0.41421356, -0.41421356,  1.        ],
                [-0.41421356,  0.41421356,  1.        ],
-               [ 0.41421356, -0.41421356,  1.        ],
-               [ 0.41421356,  0.41421356,  1.        ]])
+               [ 0.41421356,  0.41421356,  1.        ],
+               [ 0.41421356, -0.41421356,  1.        ]])
         """
         height = self.height
         width = self.width
@@ -1394,12 +1394,39 @@ class PinholeCameraModel(object):
         view_frust_pts = np.array(
             [(np.array([0, 0, 0, width, width]) - cx) *
              np.array([0, max_depth, max_depth, max_depth, max_depth]) / fx,
-             (np.array([0, 0, height, 0, height]) - cy) *
+             (np.array([0, 0, height, height, 0]) - cy) *
              np.array([0, max_depth, max_depth, max_depth, max_depth]) / fy,
              np.array([0, max_depth, max_depth, max_depth, max_depth])])
         view_frust_pts = np.dot(rotation, view_frust_pts) + np.tile(
             translation.reshape(3, 1), (1, view_frust_pts.shape[1]))
         return view_frust_pts.T
+
+    def in_view_frustum(self, points, max_depth=100.0):
+        """Determine if points in the view frustum.
+
+        Parameters
+        ----------
+        points : numpy.ndarray or list[tuple(float, float)]
+            3D point (x, y, z).
+        max_depth : float
+            max depth of frustsum.
+
+        Returns
+        -------
+        ret : numpy.ndarray or bool
+            bool array. True indicates point in this view frustsum.
+        """
+        points = np.array(points)
+        view_frust_pts = self.get_view_frustum(max_depth=max_depth)
+        camera_center = view_frust_pts[0]
+        view_frust_pts = view_frust_pts[1:] - camera_center
+        n = np.cross(view_frust_pts, np.roll(view_frust_pts, 1, axis=0))
+        n = n / np.linalg.norm(n)
+        if points.ndim == 1:
+            return np.all(np.dot(n, points - camera_center) > 0)
+        elif points.ndim == 2:
+            return np.all(
+                np.dot(n, (points - camera_center).T) > 0, axis=0)
 
     def flatten_uv(self, uv, dtype=np.int64):
         """Flattens uv coordinates to single dimensional tensor.
