@@ -306,6 +306,51 @@ class PinholeCameraModel(object):
         return self.P[1, 1]
 
     @property
+    def Tx(self):
+        """Return Tx.
+
+        For monocular cameras, Tx = Ty = Tz = 0.
+        For a stereo pair, the fourth column [Tx Ty Tz]' is related to the
+        position of the optical center of the second camera in the first
+        camera's frame.
+
+        Returns
+        -------
+        Tx : numpy.float32
+        """
+        return self.P[0, 3]
+
+    @property
+    def Ty(self):
+        """Return Ty.
+
+        For monocular cameras, Tx = Ty = Tz = 0.
+        For a stereo pair, the fourth column [Tx Ty Tz]' is related to the
+        position of the optical center of the second camera in the first
+        camera's frame.
+
+        Returns
+        -------
+        Ty : numpy.float32
+        """
+        return self.P[1, 3]
+
+    @property
+    def Tz(self):
+        """Return Tz.
+
+        For monocular cameras, Tx = Ty = Tz = 0.
+        For a stereo pair, the fourth column [Tx Ty Tz]' is related to the
+        position of the optical center of the second camera in the first
+        camera's frame.
+
+        Returns
+        -------
+        Tz : numpy.float32
+        """
+        return self.P[2, 3]
+
+    @property
     def fov(self):
         """Property of fov.
 
