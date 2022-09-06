@@ -272,3 +272,15 @@ class TestPinholeCameraModel(unittest.TestCase):
         testing.assert_equal(cm.in_view_frustum([0, 0, 1]), True)
         testing.assert_equal(cm.in_view_frustum([100, 100, 0]), False)
         testing.assert_equal(cm.in_view_frustum([5, 5, 0]), False)
+
+    def test_points_to_depth(self):
+        cm = cameramodels.models.AzureKinect()
+        depth = np.ones((cm.height, cm.width))
+        points = cm.depth_to_points(depth)
+        cm.points_to_depth(points)
+        cm.points_to_depth(points.reshape(-1, 3))
+
+    def test_depth_to_points(self):
+        cm = cameramodels.models.AzureKinect()
+        depth = np.ones((cm.height, cm.width))
+        cm.depth_to_points(depth)

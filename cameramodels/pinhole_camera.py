@@ -1400,6 +1400,51 @@ class PinholeCameraModel(object):
                 return uv, np.where(valid_indices)[0]
         return uv
 
+    def points_to_depth(self, points, depth_value=0.0):
+        """Return depth image from 3D points.
+
+        Parameters
+        ----------
+        points : numpy.ndarray
+            batch of xyz point (batch_size, 3) or (height, width, 3).
+        depth_value : float
+            default depth value.
+
+        Returns
+        -------
+        depth : numpy.ndarray
+            projected depth image.
+        """
+        if points.shape == (self.height, self.width, 3):
+            points = points.reshape(-1, 3)
+        uv, indices = self.batch_project3d_to_pixel(
+            points,
+            project_valid_depth_only=True,
+            return_indices=True)
+        uv = np.array(uv, dtype=np.int32)
+        depth = depth_value * np.ones((self.height, self.width), 'f')
+        depth.reshape(-1)[self.flatten_uv(uv)] = points[indices][:, 2]
+        return depth
+
+    def depth_to_points(self, depth):
+        """Convert depth image to point clouds.
+
+        Parameters
+        ----------
+        depth : numpy.ndarray
+            depth image.
+
+        Returns
+        -------
+        points : numpy.ndarray
+            return shape is (width, height, 3).
+        """
+        uv = self.flattened_pixel_locations_to_uv(
+            np.arange(self.width * self.height))
+        points = self.batch_project_pixel_to_3d_ray(
+            uv, depth=depth)
+        return points.reshape(self.height, self.width, 3)
+
     def get_view_frustum(self, max_depth=1.0,
                          translation=np.zeros(3),
                          rotation=np.eye(3)):
