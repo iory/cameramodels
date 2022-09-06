@@ -1421,7 +1421,8 @@ class PinholeCameraModel(object):
             points,
             project_valid_depth_only=True,
             return_indices=True)
-        uv = np.array(uv, dtype=np.int32)
+        # round off
+        uv = np.array(uv + 0.5, dtype=np.int32)
         depth = depth_value * np.ones((self.height, self.width), 'f')
         depth.reshape(-1)[self.flatten_uv(uv)] = points[indices][:, 2]
         return depth
