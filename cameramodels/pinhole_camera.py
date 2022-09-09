@@ -1578,23 +1578,48 @@ class PinholeCameraModel(object):
             (flat_pixel_locations % self.width).reshape(-1, 1),
             (flat_pixel_locations.T // self.width).reshape(-1, 1)])
 
-    def dump(self, output_filepath):
+    def dump(self, output_filepath, save_original=True):
         """Dump this camera's parameter to yaml file.
 
         Parameters
         ----------
         output_filepath : str or pathlib.Path
             output path
+        save_original : bool
+            If `False`, save resized camera info.
         """
+        if save_original is True:
+            width = self._full_width
+            height = self._full_height
+            K = self.full_K
+            P = self.full_P
+            binning_x = self._binning_x
+            binning_y = self._binning_y
+            x_offset = self.roi[1]
+            y_offset = self.roi[0]
+            roi_height = self.roi[2] - self.roi[0]
+            roi_width = self.roi[3] - self.roi[1]
+        else:
+            width = int(self._width / self._binning_x)
+            height = int(self._height / self._binning_y)
+            K = self.K
+            P = self.P
+            binning_x = 1
+            binning_y = 1
+            x_offset = 0
+            y_offset = 0
+            roi_height = 0
+            roi_width = 0
+
         camera_data = "\n".join([
-                "image_width: %d" % self._full_width,
-                "image_height: %d" % self._full_height,
+                "image_width: %d" % width,
+                "image_height: %d" % height,
                 "camera_name: " + self.name,
                 "camera_matrix:",
                 "  rows: 3",
                 "  cols: 3",
                 "  data: " + format_mat(
-                    np.array(self.full_K.reshape(-1), dtype=np.float64), 5),
+                    np.array(K.reshape(-1), dtype=np.float64), 5),
                 "distortion_model: " + self.distortion_model,
                 "distortion_coefficients:",
                 "  rows: 1",
@@ -1611,14 +1636,14 @@ class PinholeCameraModel(object):
                 "  rows: 3",
                 "  cols: 4",
                 "  data: " + format_mat(
-                    np.array(self.full_P.reshape(-1), dtype=np.float64), 5),
-                "binning_x: %f" % self._binning_x,
-                "binning_y: %f" % self._binning_y,
+                    np.array(P.reshape(-1), dtype=np.float64), 5),
+                "binning_x: %f" % binning_x,
+                "binning_y: %f" % binning_y,
                 "roi:",
-                "  x_offset: %d" % self.roi[1],
-                "  y_offset: %d" % self.roi[0],
-                "  height: %d" % (self.roi[2] - self.roi[0]),
-                "  width: %d" % (self.roi[3] - self.roi[1]),
+                "  x_offset: %d" % x_offset,
+                "  y_offset: %d" % y_offset,
+                "  height: %d" % roi_height,
+                "  width: %d" % roi_width,
                 ""
             ])
         with open(str(output_filepath), 'w') as f:
