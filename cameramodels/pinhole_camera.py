@@ -1086,6 +1086,37 @@ class PinholeCameraModel(object):
         else:
             return dst.reshape(-1, 2)
 
+    def unrectify_point(self, uv_points):
+        """Return distorted points from rectified points.
+
+        Parameters
+        ----------
+        uv_points : numpy.ndarray or list
+            (u, v) point.
+
+        Returns
+        -------
+        distorted_points : numpy.ndarray or tuple(int)
+            distorted points.
+        """
+        mapx, mapy = self.mapx, self.mapy
+        uv_points = np.array(np.array(uv_points, 'f') + 0.5, 'i')
+        if uv_points.ndim == 2:
+            u = uv_points[:, 0]
+            v = uv_points[:, 1]
+        else:
+            u = uv_points[0]
+            v = uv_points[1]
+        x = mapx[v, u]
+        y = mapy[v, u]
+        if uv_points.ndim == 2:
+            unrectified_points = np.concatenate(
+                [x.reshape(-1, 1), y.reshape(-1, 1)],
+                axis=1)
+            return np.array(unrectified_points + 0.5, 'i')
+        else:
+            return int(x), int(y)
+
     def crop_resize_camera_info(self, target_size, roi=None):
         """Return cropped and resized region's camera model
 

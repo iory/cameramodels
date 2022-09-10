@@ -43,6 +43,11 @@ class TestPinholeCameraModel(unittest.TestCase):
         testing.assert_equal(
             cm.rectify_point(np.zeros((10, 2))).shape, (10, 2))
 
+    def test_unrectify_point(self):
+        cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
+        testing.assert_equal(len(cm.unrectify_point([0, 0])), 2)
+        testing.assert_equal(cm.unrectify_point([[0, 0]]).shape, (1, 2))
+
     def test_crop_resize_camra_info(self):
         cropped_resized_cm = self.cm.crop_resize_camera_info(
             target_size=[100, 200], roi=[0, 0, 100, 150])
