@@ -198,6 +198,15 @@ class PinholeCameraModel(object):
         self._fovx = 2.0 * np.rad2deg(np.arctan(self.width / (2.0 * self.fx)))
         self._fovy = 2.0 * np.rad2deg(np.arctan(self.height / (2.0 * self.fy)))
 
+        self.mapx = np.ndarray(shape=(self.height, self.width, 1),
+                               dtype='float32')
+        self.mapy = np.ndarray(shape=(self.height, self.width, 1),
+                               dtype='float32')
+        cv2.initUndistortRectifyMap(
+            self.K, self.D, self.R, self.P,
+            (self.width, self.height),
+            cv2.CV_32FC1, self.mapx, self.mapy)
+
     @property
     def width(self):
         """Returns image width
@@ -1044,16 +1053,8 @@ class PinholeCameraModel(object):
         if _cv2_available is False:
             raise RuntimeError('CV2 are not enabled. Currently '
                                'only support cv2 rectification.')
-        mapx = np.ndarray(shape=(self.height, self.width, 1),
-                          dtype='float32')
-        mapy = np.ndarray(shape=(self.height, self.width, 1),
-                          dtype='float32')
-        cv2.initUndistortRectifyMap(
-            self.K, self.D, self.R, self.P,
-            (self.width, self.height),
-            cv2.CV_32FC1, mapx, mapy)
         cv_interpolation = pil_to_cv2_interpolation(interpolation)
-        return cv2.remap(raw_img, mapx, mapy, cv_interpolation)
+        return cv2.remap(raw_img, self.mapx, self.mapy, cv_interpolation)
 
     def rectify_point(self, uv_raw):
         """Rectify input raw points.
