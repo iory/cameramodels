@@ -1156,6 +1156,7 @@ class PinholeCameraModel(object):
             roi,
             self.tf_frame,
             self.stamp,
+            name=self.name,
             distortion_model=self.distortion_model,
             full_P=self.full_P,
             full_K=self.full_K,
