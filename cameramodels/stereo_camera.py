@@ -1,6 +1,19 @@
 import numpy as np
+from scipy import linalg
 
 from cameramodels import PinholeCameraModel
+
+
+def direct_linear_transform(P1, P2, point1, point2):
+    A = [point1[1] * P1[2, :] - P1[1, :],
+         P1[0, :] - point1[0]*P1[2, :],
+         point2[1] * P2[2, :] - P2[1, :],
+         P2[0, :] - point2[0]*P2[2, :],
+         ]
+    A = np.array(A).reshape((4, 4))
+    B = np.dot(A.transpose(), A)
+    U, s, Vh = linalg.svd(B, full_matrices=False)
+    return Vh[3, 0:3] / Vh[3, 3]
 
 
 class StereoCameraModel(object):
@@ -219,3 +232,35 @@ class StereoCameraModel(object):
         points = self._right_camera.depth_to_points(depth)
         right_depth = self._right_camera.points_to_depth(points)
         return right_depth
+
+    def points_from_keypoints(self, left_uv, right_uv,
+                              return_pixel_error=False):
+        """Calculate points from left and right camera's keypoints.
+
+        Parameters
+        ----------
+        left_uv : numpy.ndarray or tuple
+            (x, y) coordinates.
+        right_uv : numpy.ndarray or tuple
+            (x, y) coordinates.
+        return_pixel_error : bool
+            if `True`, teturns the distance
+            between the reprojected point and the input point.
+
+        Returns
+        -------
+        points : numpy.ndarray
+            (x, y, z) points.
+        """
+        points = direct_linear_transform(
+            self._left_camera.P, self._right_camera.P,
+            left_uv, right_uv)
+        if return_pixel_error:
+            left_x, left_y = self._left_camera.project3d_to_pixel(points)
+            dist_left = np.sqrt((left_uv[0] - left_x) ** 2
+                                + (left_uv[1] - left_y) ** 2)
+            right_x, right_y = self._right_camera.project3d_to_pixel(points)
+            dist_right = np.sqrt((right_uv[0] - right_x) ** 2
+                                 + (right_uv[1] - right_y) ** 2)
+            return points, dist_left, dist_right
+        return points

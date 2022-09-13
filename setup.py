@@ -40,6 +40,7 @@ install_requires = [
     'numpy',
     'pillow',
     'pyyaml',
+    'scipy',
 ]
 
 setup(
