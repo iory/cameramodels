@@ -25,6 +25,11 @@ class TestPinholeCameraModel(unittest.TestCase):
     def setUpClass(cls):
         cls.cm = PinholeCameraModel.from_fovy(45, 480, 640)
 
+    def test_K_inv(self):
+        cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
+        testing.assert_almost_equal(
+            cm.K_inv, np.linalg.inv(cm.K))
+
     def test_rectify_image(self):
         cm = PinholeCameraModel.from_yaml_file(kinect_v2_camera_info())
         img = kinect_v2_image()

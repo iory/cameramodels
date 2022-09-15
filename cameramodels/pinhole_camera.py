@@ -431,6 +431,33 @@ class PinholeCameraModel(object):
         self._K = np.array(k, dtype=np.float32).reshape(3, 3)
 
     @property
+    def K_inv(self):
+        """Inverse of Intrinsic camera matrix for the raw (distorted) images.
+
+        .. math::
+            K^{-1} = \\left(
+                \\begin{array}{ccc}
+                  1 / f_x & 0 & - c_x / f_x \\\\
+                  0 & 1 / f_y & - c_y / f_y \\\\
+                  0 & 0 & 1
+                \\end{array}
+            \\right)
+
+        Projects 3D points in the camera coordinate frame to 2D pixel
+        coordinates using the focal lengths (fx, fy) and principal point
+        (cx, cy).
+
+        Returns
+        -------
+        self._K : numpy.ndarray
+            3x3 intrinsic matrix.
+        """
+        return np.array([
+            [1.0 / self.fx, 0, - self.cx / self.fx],
+            [0, 1.0 / self.fy, - self.cy / self.fy],
+            [0, 0, 1]])
+
+    @property
     def P(self):
         """Projection camera_matrix
 
@@ -1316,6 +1343,7 @@ class PinholeCameraModel(object):
         ray_vector : tuple(float)
             ray vector.
         """
+        # np.matmul(np.linalg.inv(K), uv)
         x = (uv[0] - self.cx) / self.fx
         y = (uv[1] - self.cy) / self.fy
         z = 1.0
