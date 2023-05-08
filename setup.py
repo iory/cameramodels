@@ -9,7 +9,7 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-version = '0.2.11'
+version = '0.2.12'
 
 
 if sys.argv[-1] == 'release':
@@ -70,6 +70,11 @@ setup(
     zip_safe=False,
     setup_requires=setup_requires,
     install_requires=install_requires,
+    entry_points={
+        "console_scripts": [
+            "resize-camera-info=cameramodels.apps.resize_camera_info:main"
+        ]
+    },
     extras_require={
         'all': [
             'open3d',
