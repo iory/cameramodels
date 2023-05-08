@@ -70,6 +70,11 @@ setup(
     zip_safe=False,
     setup_requires=setup_requires,
     install_requires=install_requires,
+    entry_points={
+        "console_scripts": [
+            "resize-camera-info=cameramodels.apps.resize_camera_info:main"
+        ]
+    },
     extras_require={
         'all': [
             'open3d',
