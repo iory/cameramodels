@@ -22,6 +22,6 @@ class TestAlign(unittest.TestCase):
                            cm, cm, np.eye(4))
 
         nan_depth = np.zeros((cm.height, cm.width), dtype=np.float32)
-        nan_depth[:] = np.NaN
+        nan_depth[:] = np.nan
         align_depth_to_rgb(zero_depth,
                            cm, cm, np.eye(4))
