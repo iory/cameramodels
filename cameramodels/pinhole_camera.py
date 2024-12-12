@@ -1,6 +1,8 @@
 from __future__ import division
 
 import copy
+from glob import glob
+import os
 import warnings
 
 import numpy as np
@@ -1821,3 +1823,70 @@ class PinholeCameraModel(object):
         height = int(height)
         width = int(width)
         return (width, height)
+
+    @staticmethod
+    def from_checkerboard_image_paths(image_path, pattern_size=(9, 6)):
+        obj_points = []
+        img_points = []
+        pattern_points = np.zeros(
+            (pattern_size[0] * pattern_size[1], 3), np.float32)
+        pattern_points[:, :2] = np.mgrid[
+            0:pattern_size[0],
+            0:pattern_size[1]].T.reshape(-1, 2)
+
+        image_formats = ('*.jpg', '*.png', '*.jpeg', '*.bmp')
+
+        # Collect image files
+        image_files = []
+        for fmt in image_formats:
+            image_files.extend(glob(os.path.join(image_path, fmt)))
+
+        if not image_files:
+            print("No image files found in the specified path.")
+            return None
+
+        for fn in image_files:
+            print("Loading...", fn)
+            # Load the image in grayscale
+            im = cv2.imread(fn, cv2.IMREAD_GRAYSCALE)
+
+            if im is None:
+                print(f"Error loading image: {fn}")
+                continue
+
+            # Detect chessboard corners
+            found, corners = cv2.findChessboardCorners(im, pattern_size)
+
+            if found:
+                term_criteria = (
+                    cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_COUNT,
+                    30, 0.1)
+                cv2.cornerSubPix(im, corners, (5, 5), (-1, -1), term_criteria)
+                # cv2.drawChessboardCorners(
+                #     im, pattern_size, corners, found)
+                # cv2.imshow(f"Found corners in {fn}", im)
+                # cv2.waitKey(500)
+                img_points.append(corners.reshape(-1, 2))
+                obj_points.append(pattern_points)
+            else:
+                print(f"Chessboard not found in {fn}")
+        rms, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
+            obj_points,
+            img_points,
+            (im.shape[1], im.shape[0]),
+            None,
+            None
+        )
+
+        print(f"RMS Error: {rms}")
+        print(f"Camera Matrix:\n{camera_matrix}")
+        print(f"Distortion Coefficients:\n{dist_coeffs}")
+        K = camera_matrix
+        P = np.zeros((3, 4), dtype=np.float64)
+        P[:3, :3] = K.copy()
+        return PinholeCameraModel(
+            image_height=im.shape[0],
+            image_width=im.shape[1],
+            K=K, P=P,
+            D=dist_coeffs.reshape(-1),
+            name='camera')

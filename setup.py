@@ -9,7 +9,7 @@ from setuptools import find_packages
 from setuptools import setup
 
 
-version = '0.2.12'
+version = '0.2.13'
 
 
 if sys.argv[-1] == 'release':
@@ -59,7 +59,6 @@ setup(
         'Natural Language :: English',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python',
-        'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
         'Programming Language :: Python :: 3.7',

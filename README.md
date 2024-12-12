@@ -1,6 +1,7 @@
 # Camera Models
 
-[![Build Status](https://github.com/iory/cameramodels/workflows/Run%20Tests/badge.svg?branch=master)](https://github.com/iory/cameramodels/actions)
+![PyPI](https://img.shields.io/pypi/v/cameramodels.svg)
+[![Build Status](https://github.com/iory/cameramodels/workflows/Run%20Tests/badge.svg?branch=main)](https://github.com/iory/cameramodels/actions)
 
 <h4>
     <a href="https://cameramodels.readthedocs.io/en/latest/">Documentation</a> |
